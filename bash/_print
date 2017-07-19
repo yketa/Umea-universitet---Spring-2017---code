@@ -1,0 +1,20 @@
+#! /bin/sh
+
+# Prints argument files via ssh on landau.tp.umu.se.
+
+if [ $# -gt 0 ]; then # print the files in input
+
+	for file in "$@"; do
+
+			if [ ! -f $file ]; then # file does not exist
+				echo ${file}' does not exist.'
+			else # file exists
+
+				cat $file | ssh umea_lab "cat - | lpr" # prints file
+
+			fi
+	done
+
+else # no files in argument
+	echo "No files in argument."
+fi

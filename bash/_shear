@@ -1,0 +1,645 @@
+#! /bin/bash
+
+# Creates a .out and .csv file of the critical exponents,
+# constant of dissipation, mass and aspect ratio.
+# Copies data files to local.
+
+# Creates plo scripts for viscosity scaling figures.
+# Executes plo scripts.
+# Copies plo scripts to local.
+# Copies figures to local.
+
+## PARAMETRISATION
+
+NU=${NUMBER-1024} # for simulations with N=NU particles
+K=${KD-k500} # for simulations with kd=K
+MA=${MASS-l100} # for simulations with m=MA
+
+LA=${LAB-umea_lab} # tp.umu.se host
+TP=${LABPATH-/home/yketa/Desktop/Elli-mpi} # tp.umu.se path to shearing simulations directory
+OU=${OUTPUT-outputs_} # name of the data output files directory in TP
+
+LP=${LOCALPATH-/Users/yketa/Cours/ENS/M1/Stage/Umeå/simulations-test} # local path to relaxation simulations directory
+
+CR=${CREXP-cr_exp_ouputs} # name of the critical exponents data files directory in TP and local
+ZR=${ZROUT-contact_outputs} # name of the contact numbers data files directory in TP and local
+PL=${PLOT-scale_plots_} # name of the plo scripts directory in TP and local
+FI=${FIG-scale_figs_} # name of the figures directory in TP and local
+
+## SCRIPT
+
+ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.se
+
+	NU=$1 # simulations with N=NU particles
+	shift
+	K=$1 # simulations with kd=K
+	shift
+	MA=$1 # simulations with m=MA
+	shift
+
+	TP=$1 # tp.umu.se path to shearing simulations directory
+	shift
+	OU=$1 # data output files directory in TP
+	shift
+	CR=$1 # critical exponents data files directory in TP
+	shift
+	ZR=$1 # contact numbers data files directory in TP
+	shift
+	PL=$1 # plo scripts directory in TP
+	shift
+	FI=$1 # figures directory in TP
+	shift
+
+	if [ ! -d ${TP}/data ]; then
+		echo "Shearing simulations data directory does not exist."
+		exit 0
+	elif [ ! -f ${TP}/bin/tot ]; then
+		echo "Shearing simulations directory does not contain bin/tot."
+		exit 0
+	elif [ ! -x "$(command -v plo)" ]; then
+		echo "Host does not have the command plo."
+		exit 0
+	fi
+
+	cd ${TP} # directory of the data files of the shearing simulations
+	echo "Simulations directory: $(pwd) on $(whoami)@$HOSTNAME"
+	
+	mkdir -p $OU
+	mkdir -p $CR
+	mkdir -p $ZR
+
+	mkdir -p $PL
+	mkdir -p ${PL}/scale
+	mkdir -p ${PL}/rheo
+	mkdir -p ${PL}/cr_exp
+	mkdir -p ${PL}/orij_phi
+	if [ -f bin/ltot ]; then mkdir -p ${PL}/zr_phi; else mkdir -p ${PL}/z_phi; fi
+
+	mkdir -p $FI
+	mkdir -p ${FI}/scale
+	mkdir -p ${FI}/scale/p-phi
+	mkdir -p ${FI}/scale/p-dphi-scale
+	mkdir -p ${FI}/scale/etap-phi
+	mkdir -p ${FI}/scale/etap-phieff
+	mkdir -p ${FI}/rheo
+	mkdir -p ${FI}/rheo/etap
+	mkdir -p ${FI}/rheo/bp
+	mkdir -p ${FI}/cr_exp
+	mkdir -p ${FI}/cr_exp/beta
+	mkdir -p ${FI}/cr_exp/phij
+	mkdir -p ${FI}/orij_phi
+	if [ -f bin/ltot ]; then mkdir -p ${FI}/zr_phi; else mkdir -p ${FI}/z_phi; fi
+
+	printf "\n"
+
+	while (( ${#NU} < 4 )); do
+		NU=0${NU} # number of particles with adequate number of zeros
+	done
+	NNU=${#NU} # number of digits of the number of particles with adequate number of zeros
+	declare -A args # declares the hash table args
+	args=(["N"]="0" ["r"]="$((2+$NNU))" ["GD"]="$((9+$NNU))" ["KD"]="$((16+$NNU))" ["M"]="$((22+$NNU))" ["EL"]="$((29+$NNU))") # hash table of the positions of the arguments
+
+	files=($(for file in `ls data | grep $NU | grep KD${K} | grep M${MA}`; do if [ -f log/$file ]; then if grep -Fq 'Completed after' log/$file; then echo $file; fi; fi; done)) # data files corresponding to completed shearing simulations
+
+	declare -A exponents # declares the hash table exponents
+	exponents=(["a"]="e-11" ["b"]="e-10" ["c"]="e-9" ["d"]="e-8" ["e"]="e-7" ["f"]="e-6" ["g"]="e-5" ["h"]="e-4" ["i"]="e-3" ["j"]="e-2" ["k"]="e-1" ["l"]="e0" ["m"]="e1") # hash table of the exponents
+
+	# per aspect ratio
+
+	EL=($(for file in ${files[@]}; do echo ${file:${args[EL]}:3}; done | sort)) # array of the aspect ratios
+	_EL=() # aspect ratios which have been already treated
+
+	> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.out # plo data
+	echo "icol N kd m alpha phij phijsd beta betasd q qsd h hsd chisq" >> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.out
+	> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.csv # csv data
+	echo "N,kd,m,alpha,phij,phijsd,beta,betasd,q,qsd,h,hsd,chisq," >> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.csv
+
+	for el in $(seq 0 $((${#EL[@]}-1))); do
+
+		if [[ ! "${_EL[@]}" =~ "${EL[$el]}" ]]; then # if the aspect ration ${EL[$el]} has not been treated yet
+
+			_EL+=(${EL[$el]}) # we add the current aspect ratio to the already treated array
+
+			files_EL=($(for file in ${files[@]}; do echo $file | grep EL${EL[$el]}; done)) # files to treat for the current value of the aspect ratio
+			echo "Reading from ${#files_EL[@]} files with alpha=${EL[$el]:0:1}.${EL[$el]:1:2}."
+
+			GD_=() # arrays of the shear strain rates (with Olsson's notation)
+			> ${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]} # output data file
+			for file in ${files_EL[@]}; do
+				if [[ ! "${GD_[@]}" =~ "${file:${args[GD]}:4}" ]]; then
+					GD_+=(${file:${args[GD]}:4})
+				fi
+				echo data/$file | bin/tot >> ${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
+			done
+			GD_=($(for gd in ${GD_[@]}; do echo $gd; done | sort)) # sorted shear strain rates
+			GD=($(for gd in ${GD_[@]}; do echo ${gd:1:1}.${gd:2:2}${exponents[${gd:0:1}]}; done)) # arrays of the shearing strain rates
+
+			# cr_exp_*_KD*_M*.*
+
+			cr_exp="`( plo <<EOF2
+< ${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+cal gdotmax 1e-4
+cal gdotmin 1e-5
+cal xmax 0.4
+
+cal sdfact sqrt((engr-1)/(engr-3))
+cal phi rho
+
+cal \\$q 0.183347
+cal \\$a0 -2.82432
+cal \\$a1 4.19327
+cal \\$rhoc 0.707465
+cal \\$h -0.190358
+cal \\$a2 -5.98509
+cal \\$a3 12.8789 
+cal \\$a4 24.9358
+cal \\$a5 0
+
+cal X (phi-\\$rhoc)*gdot^\\$h
+cal Sel abs(X)<xmax&engr>3&gdot<=gdotmax&gdot>=gdotmin
+
+for nn 1 10
+icol q a0 a1 rhoc h a2 a3 a4 a5 qsd a0sd a1sd rhocsd hsd a2sd a3sd a4sd a5sd chisq
+get "lmarqsd(pe,pe?*sdfact,
+(gdot^\\$q):gk*exp(\\$a0+\\$a1*((phi-\\$rhoc):rd*(gdot^\\$h):gh):gr+\\$a2*(gr*gr):gr2+\\$a3*(gr*gr2):gr3+\\$a4*(gr2*gr2):gr4+\\$a5*gr2*gr3):atot,
+ln(gdot)*gk*atot,
+gk*atot,
+gk*gr*atot,
+gk*gh*(-1)*(\\$a1+\\$a2*2*gr+\\$a3*3*gr2+\\$a4*4*gr3+\\$a5*5*gr4):tot12345*atot,
+gk*ln(gdot)*gh*rd*tot12345*atot,
+gk*gr2*atot,
+gk*gr3*atot,
+gk*gr4*atot,
+gk*gr2*gr3*atot,
+Sel)
+end
+
+cal beta (q[q.n1-1]-1)/h[h.n1-1]
+cal betasd beta*sqrt((qsd[qsd.n1-1]/q[q.n1-1])^2+(hsd[hsd.n1-1]/h[h.n1-1])^2)
+
+list rhoc[rhoc.n1-1] rhocsd[rhocsd.n1-1] beta betasd q[q.n1-1] qsd[qsd.n1-1] h[h.n1-1] hsd[hsd.n1-1] chisq[chisq.n1-1]
+exit
+EOF2
+			) | grep -v Plo | grep -v '...>'`" # critical exponents, inferred from the Levenberg–Marquardt least squared curve fitting method
+			cr_exp=( $cr_exp )
+			
+			values="${NU} ${K:1:1}.${K:2:2}${exponents[${K:0:1}]} ${MA:1:1}.${MA:2:2}${exponents[${MA:0:1}]} ${EL[$el]:0:1}.${EL[$el]:1:2} ${cr_exp[@]} " # values
+			values=( $values )
+			if [[ "${#values[@]}" = 13 ]]; then # no errors in the determination of the critical exponents
+				echo ${values[@]} >> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.out # writes in plo parsed file
+				echo ${values[@]} | sed s/' '/','/g >> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.csv # writes in csv parsed data
+			fi
+
+			# scale_*_KD*_M*_EL*.plo
+
+			( cat <<EOF2
+< ${TP}/${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
+getenv GDOTMAX 1e-4
+getenv GDOTMIN 1e-5
+getenv XMAX 0.4
+
+icol gd
+`for gd in ${GD[@]}; do echo $gd; done`
+
+cal sdfact sqrt((engr-1)/(engr-3))
+cal phi rho
+
+cal \$q 0.183347
+cal \$a0 -2.82432
+cal \$a1 4.19327
+cal \$rhoc 0.707465
+cal \$h -0.190358
+cal \$a2 -5.98509
+cal \$a3 12.8789 
+cal \$a4 24.9358
+cal \$a5 0
+
+cal X (phi-\$rhoc)*gdot^\$h
+cal Sel abs(X)<\`XMAX&engr>3&gdot<=\`GDOTMAX&gdot>=\`GDOTMIN
+
+for nn 1 10
+icol q a0 a1 rhoc h a2 a3 a4 a5 qsd a0sd a1sd rhocsd hsd a2sd a3sd a4sd a5sd chisq
+get "lmarqsd(pe,pe?*sdfact,
+(gdot^\$q):gk*exp(\$a0+\$a1*((phi-\$rhoc):rd*(gdot^\$h):gh):gr+\$a2*(gr*gr):gr2+\$a3*(gr*gr2):gr3+\$a4*(gr2*gr2):gr4+\$a5*gr2*gr3):atot,
+ln(gdot)*gk*atot,
+gk*atot,
+gk*gr*atot,
+gk*gh*(-1)*(\$a1+\$a2*2*gr+\$a3*3*gr2+\$a4*4*gr3+\$a5*5*gr4):tot12345*atot,
+gk*ln(gdot)*gh*rd*tot12345*atot,
+gk*gr2*atot,
+gk*gr3*atot,
+gk*gr4*atot,
+gk*gr2*gr3*atot,
+Sel)
+end
+
+cal beta (q[q.n1-1]-1)/h[h.n1-1]
+cal betasd beta*sqrt((qsd[qsd.n1-1]/q[q.n1-1])^2+(hsd[hsd.n1-1]/h[h.n1-1])^2)
+
+
+fig a
+
+gr 0,,gd.n1-1 pe rho -err pe? -line -sel gdot=gd[#]
+gr 0,,gd.n1-1 -mark 500 600+#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
+
+gr gd.n1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f}\$" N[0]
+gr gd.n1+1 -mark 500 6000 -text "\${\scriptstyle k_d=%g}\$" kd[0]
+gr gd.n1+2 -mark 500 5500 -text "\${\scriptstyle m=%g}\$" m[0]
+gr gd.n1+3 -mark 500 5000 -text "\${\scriptstyle \alpha=%6.2f}\$" alpha[0]
+
+xl rho.min-0.1 - lin
+yl - - log
+
+ctext pe \$p_e\$
+ctext rho \$\phi\$
+
+latexps ${TP}/${FI}/scale/p-phi/p-phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+
+fig b
+
+cal X (rho-\$rhoc)*gdot^\$h
+cal Sel abs(X)<\`XMAX&engr>3&gdot<=\`GDOTMAX&gdot>=\`GDOTMIN
+cal etapq select(pe/gdot^\$q,Sel)
+
+gr 0,,gd.n1-1 pe/gdot^\$q X -err pe?/gdot^\$q -sel gdot=gd[#]&Sel
+
+icol x
+for i -50 50 get i/100
+gr gd.n1 exp(\$a0+x*(\$a1+x*(\$a2+x*(\$a3+x*(\$a4+x*\$a5))))) x -Line
+
+gr gd.n1 -mark 800 800 -text "\${\scriptscriptstyle f(X)=\exp\left(\sum_{i=0}^{5}a_iX^i\right)}\$"
+gr gd.n1+1 -mark 6000 800 -text "\${\scriptstyle \phi_{\scriptscriptstyle J}=%6.4f\pm%6.6f}\$" rhoc[rhoc.n1-1] rhocsd[rhocsd.n1-1]
+gr gd.n1+2 -mark 800 5800 -text "\${\scriptstyle q=%5.3f\pm%5.5f,~ h=%5.3f\pm%5.5f}\$" q[q.n1-1] qsd[qsd.n1-1] h[h.n1-1] hsd[hsd.n1-1]
+gr gd.n1+3 -mark 800 6300 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alpha=%6.2f}\$" N[0] kd[0] m[0] alpha[0]
+gr gd.n1+4 -mark 800 5300 -text "\${\scriptstyle \chi^2/DOF=%3.2f}\$" chisq[0]
+
+xl -0.6 0.6 lin
+yl exp(2*ln(etapq.min)-ln(etapq.max)) exp(2*ln(etapq.max)-ln(etapq.min)) log
+
+ctext pe/gdot^\$q \$p_e/\dot\gamma^{q_p}\$
+ctext X \$(\phi-\phi_J)\dot\gamma^{h_p}\$
+
+latexps ${TP}/${FI}/scale/p-dphi-scale/p-dphi-scale_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+
+fig c
+
+cal xminetap \$rhoc-0.05
+cal xmaxetap \$rhoc+0.02
+cal etap select(pe/gdot,rho>=xminetap&rho<=xmaxetap)
+
+cal A (\$rhoc-xminetap)^beta*exp((9*ln(etap.min)+ln(etap.max))/10)
+
+gr 0,,gd.n1-1 pe/gdot rho -err pe?/gdot -sel gdot=gd[#]&rho>=xminetap&rho<=xmaxetap -line
+
+icol rr
+for i xminetap*1000 xmaxetap*1000 get i/1000
+gr gd.n1 A/(\$rhoc-rr)^beta rr -Dash -rgb 0 0 0
+
+gr gd.n1 -mark 800 5500 -text "\${\scriptstyle (\phi_J-\phi)^{-\beta}}\$"
+gr gd.n1+1 -mark 800 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alpha=%6.2f}\$" N[0] kd[0] m[0] alpha[0]
+gr gd.n1+2 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f\pm%3.4f}\$" beta betasd
+
+xl (9*xminetap-xmaxetap)/8 (9*xmaxetap-xminetap)/8 lin
+yl exp((9*ln(etap.min)-ln(etap.max))/8) exp((9*ln(etap.max)-ln(etap.min))/8) log
+
+ctext pe/gdot \$p_e/\dot\gamma\$
+
+latexps ${TP}/${FI}/scale/etap-phi/etap-phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+
+fig d
+
+cal etap select(pe/gdot,rho>=xminetap&rho<=xmaxetap&pe>0)
+cal phij rhoc[9]
+cal w -0.5*h[9]/q[9]
+
+cal etap1 etap.min
+cal etap2 etap.max
+
+cal E1 select(energy,pe/gdot=etap1&rho>=xminetap&rho<=xmaxetap&pe>0)
+cal E1 E1[0]
+cal E2 select(energy,pe/gdot=etap2&rho>=xminetap&rho<=xmaxetap&pe>0)
+cal E2 E2[0]
+cal phi1 select(rho,pe/gdot=etap1&rho>=xminetap&rho<=xmaxetap&pe>0)
+cal phi1 phi1[0]
+cal phi2 select(rho,pe/gdot=etap2&rho>=xminetap&rho<=xmaxetap&pe>0)
+cal phi2 phi2[0]
+
+cal C (((phij-phi1)/(E1^w)+(phi2-phij)/(E2^w))/((etap1^(-1/beta))/(E1^w)-(etap2^(-1/beta))/(E2^w)))^beta
+cal c ((etap2/C)^(-1/beta)+phi2-phij)/(E2^w)
+
+cal xe select(phij-rho+c*energy^w,rho>=xminetap&rho<=xmaxetap&pe>0)
+
+gr 0,,gd.n1-1 pe/gdot phij-rho+c*energy^w -err pe?/gdot -sel gdot=gd[#]&rho>=xminetap&rho<=xmaxetap&pe>0
+
+icol rrr
+for i exp((19*ln(xe.min)-ln(xe.max))/18)*1000 exp((19*ln(xe.max)-ln(xe.min))/18)*1000 get i/1000
+gr gd.n1 C*rrr^(-beta) rrr -Line
+
+gr gd.n1 -mark 800 1000 -text "\${\scriptstyle (\phi_J-\phi+ %6.3f E^{\scriptscriptstyle %6.3f})^{-\beta}}\$" c w
+gr gd.n1+1 -mark 800 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alpha=%6.2f}\$" N[0] kd[0] m[0] alpha[0]
+gr gd.n1+2 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f,~ \phi_J=%3.4f}\$" beta phij
+
+xl exp((9*ln(xe.min)-ln(xe.max))/8) exp((9*ln(xe.max)-ln(xe.min))/8) log
+yl exp((3*ln(etap.min)-ln(etap.max))/2) exp((3*ln(etap.max)-ln(etap.min))/2) log
+
+ctext phij-rho+c*energy^w \$\phi_J-\phi_{eff}\$
+
+latexps ${TP}/${FI}/scale/etap-phieff/etap-phieff_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+
+# fig e
+
+# cal Y exp(\$a0+X*(\$a1+X*(\$a2+X*(\$a3+X*(\$a4+X*\$a5)))))
+
+# gr 0,,gd.n1-1 (pe-gdot^\$q*Y)/pe? (rho-\$rhoc)*gdot^\$h -sel gdot=gd[#]&Sel -err pe?*sdfact/gdot^\$q/Y
+# ctext (pe-gdot^\$q*Y)/pe?  \$(p_e-f(\dot\gamma,\phi))/\sigma_{p_e}\$
+# ctext (rho-\$rhoc)*gdot^\$h \$(\phi-\phi_J)\dot{\gamma}^h\$
+
+# xl -6 6 lin
+# yl - - log
+EOF2
+			) > ${PL}/scale/scale_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo # scale plot file
+			( plo < ${PL}/scale/scale_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
+			echo d >> ${PL}/scale/scale_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
+
+			# rheo_*_KD*_M*_EL*.plo
+
+			( cat <<EOF2
+< ${TP}/${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+icol gd
+`for gd in ${GD[@]}; do echo $gd; done`
+
+
+fig a
+
+gr 0,,gd.n1-1 pe/gdot rho -err pe?/gdot -line -sel gdot=gd[#]
+gr 0,,gd.n1-1 -mark 500 600+#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
+
+gr gd.n1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f}\$" N[0]
+gr gd.n1+1 -mark 500 6000 -text "\${\scriptstyle k_d=%g}\$" kd[0]
+gr gd.n1+2 -mark 500 5500 -text "\${\scriptstyle m=%g}\$" m[0]
+gr gd.n1+3 -mark 500 5000 -text "\${\scriptstyle \alpha=%6.2f}\$" alpha[0]
+
+xl rho.min-0.1 - lin
+yl - - log
+
+xtext \$\phi\$
+ytext \$\eta_p\$
+
+latexps ${TP}/${FI}/rheo/etap/etap_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+
+fig b
+
+gr 0,,gd.n1-1 pe/gdot^2 rho -err pe?/gdot^2 -line -sel gdot=gd[#]
+gr 0,,gd.n1-1 -mark 500 600+#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
+
+gr gd.n1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f}\$" N[0]
+gr gd.n1+1 -mark 500 6000 -text "\${\scriptstyle k_d=%g}\$" kd[0]
+gr gd.n1+2 -mark 500 5500 -text "\${\scriptstyle m=%g}\$" m[0]
+gr gd.n1+3 -mark 500 5000 -text "\${\scriptstyle \alpha=%6.2f}\$" alpha[0]
+
+xl rho.min-0.1 - lin
+yl - - log
+
+xtext \$\phi\$
+ytext \$B_p\$
+
+latexps ${TP}/${FI}/rheo/bp/bp_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+EOF2
+			) > ${PL}/rheo/rheo_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo # scale plot file
+			( plo < ${PL}/rheo/rheo_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
+			echo d >> ${PL}/rheo/rheo_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
+
+		fi
+
+	done
+
+	# cr_exp_*_KD*_M*.plo
+
+	( cat <<EOF2
+< ${TP}/${CR}/cr_exp_${NU}_KD${K}_M${MA}.out
+
+cal xalpha select(alpha,chisq<4)
+cal ybeta select(beta,chisq<4)
+cal yphij select(phij,chisq<4)
+
+
+fig a
+
+gr 0 beta alpha -err betasd -line -sel chisq<4
+
+xtext \$\alpha\$
+ytext \$\beta\$
+
+xl (19*xalpha.min-xalpha.max)/18 (19*xalpha.max-xalpha.min)/18 lin
+yl (19*ybeta.min-ybeta.max)/18 (19*ybeta.max-ybeta.min)/18 lin
+
+latexps ${TP}/${FI}/cr_exp/beta/beta_alpha_${NU}_KD${K}_M${MA}
+
+
+fig b
+
+gr 0 phij alpha -err phijsd -line -sel chisq<4
+
+xtext \$\alpha\$
+ytext \$\phi_J\$
+
+xl (19*xalpha.min-xalpha.max)/18 (19*xalpha.max-xalpha.min)/18 lin
+yl (19*yphij.min-yphij.max)/18 (19*yphij.max-yphij.min)/18 lin
+
+latexps ${TP}/${FI}/cr_exp/phij/phij_alpha_${NU}_KD${K}_M${MA}
+EOF2
+	) > ${PL}/cr_exp/cr_exp_${NU}_KD${K}_M${MA}.plo # critical exponents plot file
+	( plo < ${PL}/cr_exp/cr_exp_${NU}_KD${K}_M${MA}.plo ) &> /dev/null
+	echo d >> ${PL}/cr_exp/cr_exp_${NU}_KD${K}_M${MA}.plo
+
+	# per shear rate
+
+	printf "\n"
+
+	unset GD; GD=($(for file in ${files[@]}; do echo ${file:${args[GD]}:4}; done | sort)) # array of the shear rates
+	unset _GD; _GD=() # shear rates which have been already treated
+
+	if [ -f bin/ltot ]; then
+		> ${ZR}/zr_${NU}_KD${K}_M${MA}.out # plo data
+		echo "icol N rho gdot kd m alpha zr zsd engr" >> ${ZR}/zr_${NU}_KD${K}_M${MA}.out
+		> ${ZR}/zr_${NU}_KD${K}_M${MA}.csv # csv data
+		echo "N,rho,gdot,kd,m,alpha,zr,zrsd,engr," >> ${ZR}/zr_${NU}_KD${K}_M${MA}.csv
+	else
+		> ${ZR}/z_${NU}_KD${K}_M${MA}.out # plo data
+		echo "icol N rho gdot kd m alpha z zsd engr" >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
+		> ${ZR}/z_${NU}_KD${K}_M${MA}.csv # csv data
+		echo "N,rho,gdot,kd,m,alpha,z,zsd,engr," >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
+	fi
+
+	for gd in $(seq 0 $((${#GD[@]}-1))); do
+
+		if [[ ! "${_GD[@]}" =~ "${GD[$gd]}" ]]; then # if the shear rate ${GD[$gd]} has not been treated yet
+
+			_GD+=(${GD[$gd]}) # we add the current shear rate to the already treated array
+
+			files_GD=($(for file in ${files[@]}; do echo $file | grep GD${GD[$gd]}; done)) # files to treat for the current value of the shear rate
+			echo "Reading from ${#files_GD[@]} files with gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}."
+
+			unset EL_; EL_=() # arrays of the aspect ratios (without separator)
+			> ${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]} # output data file
+			for file in ${files_GD[@]}; do
+
+				if [[ ! "${EL_[@]}" =~ "${file:${args[EL]}:3}" ]]; then
+					EL_+=(${file:${args[EL]}:3})
+				fi
+
+				echo data/$file | bin/tot >> ${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+				if [ -f bin/ltot ]; then
+					values="` ( plo <<EOF2
+< "ls lat/$file | bin/ltot
+list N rho gdot kd m alpha zr
+EOF2
+					) | grep -v Plo ` " # number of contacts without rattlers
+					values=( $values )
+					if [[ "${values[-1]}" != "-" ]]; then # the number of contacts is defined
+						values+=("` ( plo <<EOF2
+< "ls data/$file | bin/tot
+list z? engr
+EOF2
+						) | grep -v Plo `")
+						echo ${values[@]} >> ${ZR}/zr_${NU}_KD${K}_M${MA}.out
+						echo ${values[@]} | sed s/' '/','/g >> ${ZR}/zr_${NU}_KD${K}_M${MA}.csv
+					fi
+				else
+					values="` ( plo <<EOF2
+< "ls data/$file | bin/tot
+list N rho gdot kd m alpha z z? engr
+EOF2
+					) | grep -v Plo ` " # number of contacts (with rattlers)
+					values=( $values )
+					if [[ "${values[-3]}" != "-" ]]; then # the number of contacts is defined
+						echo ${values[@]} >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
+						echo ${values[@]} | sed s/' '/','/g >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
+					fi
+				fi
+
+			done
+			EL_=($(for el in ${EL_[@]}; do echo $el; done | sort)) # sorted aspect ratios
+			unset EL; EL=($(for el in ${EL_[@]}; do echo ${el:0:1}.${el:1:2}; done)) # arrays of the aspect ratios
+
+			# orij_phi_*_KD*_M*_GD*.plo
+
+			( cat <<EOF2
+< ${TP}/${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+icol el
+`for el in ${EL[@]}; do echo $el; done`
+
+gr 0,,el.n1-1 orij rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*600 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 6500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 6500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (19*orij.min-orij.max)/18 (19*orij.max-orij.min)/18 lin
+
+xtext \$\phi\$
+ytext \$\mathcal{C}_{ij}\$
+
+latexps ${TP}/${FI}/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+EOF2
+			) > ${PL}/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # orientation correlation plot file
+			( plo < ${PL}/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
+			echo d >> ${PL}/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+
+			# zr_phi_*_KD*_M*_GD*.plo or z_phi_*_KD*_M*_GD*.plo
+
+			if [ -f bin/ltot ]; then
+
+				( cat <<EOF2
+< ${TP}/${ZR}/zr_${NU}_KD${K}_M${MA}.out
+
+icol el
+`for el in ${EL[@]}; do echo $el; done`
+
+cal xrho select(rho,gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}&zr>0)
+cal yzr select(zr,gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}&zr>0)
+
+gr 0,,el.n1-1 zr rho -err zrsd -line -sel alpha=el[#]&gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}
+gr 0,,el.n1-1 -mark 8000 500+#*600 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]},~ m=%g}\$" m[0]
+gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (19*yzr.min-yzr.max)/18 (19*yzr.max-yzr.min)/18 lin
+
+xtext \$\phi\$
+ytext \$z_r\$
+
+latexps ${TP}/${FI}/zr_phi/zr_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+EOF2
+				) > ${PL}/zr_phi/zr_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # contact number plot file
+				( plo < ${PL}/zr_phi/zr_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
+				echo d >> ${PL}/zr_phi/zr_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+
+			else
+
+				( cat <<EOF2
+< ${TP}/${ZR}/z_${NU}_KD${K}_M${MA}.out
+
+icol el
+`for el in ${EL[@]}; do echo $el; done`
+
+cal xrho select(rho,gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}&z>0)
+cal yz select(z,gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}&z>0)
+
+gr 0,,el.n1-1 z rho -err zsd -line -sel alpha=el[#]&gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}
+gr 0,,el.n1-1 -mark 8000 500+#*600 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]},~ m=%g}\$" m[0]
+gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (19*yz.min-yz.max)/18 (19*yz.max-yz.min)/18 lin
+
+xtext \$\phi\$
+ytext \$z\$
+
+latexps ${TP}/${FI}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+EOF2
+				) > ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # contact number plot file
+				( plo < ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
+				echo d >> ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+
+			fi
+
+		fi
+
+	done
+
+EOF
+
+mkdir -p $LP
+
+printf "\n"
+
+echo "Copying new critical exponents data files from tp.umu.se to local."
+mkdir -p ${LP}/${CR}
+rsync --quiet -avzhe ssh ${LA}:${TP}/${CR}/ ${LP}/${CR} # copies new critical exponents data files to local
+
+echo "Copying new contact numbers data files from tp.umu.se to local."
+mkdir -p ${LP}/${ZR}
+rsync --quiet -avzhe ssh ${LA}:${TP}/${ZR}/ ${LP}/${ZR} # copies new contact numbers data files to local
+
+echo "Copying new plo scripts from tp.umu.se to local."
+mkdir -p ${LP}/${PL}
+rsync --quiet -avzhe ssh ${LA}:${TP}/${PL}/ ${LP}/${PL} # copies new plotting files to local
+
+echo "Copying new figures from tp.umu.se to local."
+mkdir -p ${LP}/${FI}
+rsync --quiet -avzhe ssh ${LA}:${TP}/${FI}/ ${LP}/${FI} # copies new figures to local

@@ -1,0 +1,515 @@
+#! /bin/bash
+
+# {if UPDATE=on}
+# Processes the relaxation phase of the simulations which have finished.
+# Processes the time analysis of the relaxations which have finished.
+# (only simulations for alpha=1.2 are checked in olsson /pfs user area)
+# Copies output files to local then tp.umu.se.
+
+# Creates a .out and .csv file of the relaxation time, packing fraction,
+# shear strain rate, constant of dissipation, mass and aspect ratio for
+# simulations at N=16384.
+# Copies data files to local.
+
+# Creates plo scripts for tau vs. phi and z vs. phi per aspect ration and shear rate.
+# Creates plo scripts for pe vs. t and z vs. t per simulations.
+# Executes plo scripts.
+# Copies plo scripts to local.
+# Copies figures to local.
+
+## PARAMETRISATION
+
+UD=${UPDATE-off} # updating the output files
+NU=${NUMBER-16384} # for simulations with N=NU particles
+
+GZ=${GUESSZC-"[090]=\'7.8 7.9 8 8.1 8.2\' [120]=\'8.5 8.52 8.54 8.56 8.58 8.6\'"} # hash table of guesses of the value of zc
+GP=${GUESSPJ-"[120]=\'0.695 0.7 0.705 0.71 0.715\' [090]=\'0.755 0.76 0.765 0.77 0.775\'"} # hash table of guesses of the value of phij
+
+US=${USER-yketa} # username(s) used for the /pfs user area at HPC2N
+HP=${HPC2N-hpc2n} # HPC2N host
+
+LA=${LAB-umea_lab} # tp.umu.se host
+TP=${LABPATH-/home/yketa/Desktop/Elli-relax} # tp.umu.se path to relaxation simulations directory
+
+LP=${LOCALPATH-/Users/yketa/Cours/ENS/M1/Stage/Umeå/simulations} # local path to relaxation simulations directory
+
+## SCRIPT
+
+UP=(); for user in `echo $US`; do UP+=(/pfs/nobackup/home/${US:0:1}/${US}/hpc2n/jam-2018); done # HPC2N path(s) corresponding to username(s)
+
+if [ "$UD" = on ]; then # request to update the output files
+
+	echo "Updating output files."
+
+	ssh ${HP} "bash -s $NU $US" << 'EOF' # executes on the super computer
+
+		NU=$1 # simulations with N=NU particles
+		shift
+		while (( ${#NU} < 4 )); do
+			NU=0${NU} # number of particles with adequate number of zeros
+		done
+
+		for US in `echo $@`; do # username
+
+			echo "Username: $US"
+			U=${US:0:1} # first letter of username
+
+			cd /pfs/nobackup/home/${U}/${US}/hpc2n/jam-2018/Elli
+			for file in `ls data | grep $NU | ( [[ $US == olsson ]] && grep EL120 || cat )`; do # simulations
+			    if grep -Fq "Program finished" log/$file; then # which have finished
+			        if [ ! -f lll/${file}:00020 ]; then
+			        	echo "Shearing of $file has finished."
+			            bin/pick-Lat Lat/$file 20
+			        fi
+			    fi
+			done
+
+			for file in `ls lll | grep $NU`; do # Lat which have been picked
+			    if [ ! -f /pfs/nobackup/home/${U}/${US}/hpc2n/jam-2018/Elli-relax/lat/$file ]; then
+			        cp lll/$file ../Elli-relax/lat # copying to the relax directory
+			    fi
+			done
+
+			cd /pfs/nobackup/home/${U}/${US}/hpc2n/jam-2018/Elli-relax
+			suff=:00020
+			for file in `ls lat | grep $NU | ( [[ $US == olsson ]] && grep EL120 || cat )`; do # relaxations
+			    if [ ! -f sub/$file ]; then # which have not been launched
+			        TIME=24:00:00 mpisubmit $file bin/jam `_cmdline $file` suffix=${suff} lread
+			    fi
+			done
+			for file in `ls data | grep $NU | ( [[ $US == olsson ]] && grep EL120 || cat )`; do # relaxations
+				if grep -Fq "Program finished" log/$file; then # which have finished
+					if grep -Fq "Exit with exit_energy" log/$file; then # minimum energy was reached
+						mkdir -p outputs
+						if [ ! -f outputs/${file}.ltot ] || [ ! -f outputs/${file}.ttime ]; then # no time and/or analysis yet
+							echo "Relaxation of ${file} has finished at minimum energy. Editing output files."
+							echo data/$file | bin/ttime >> outputs/${file}.ttime # time plot
+							echo lat/$file | bin/ltot >> outputs/${file}.ltot # average plot
+						fi
+					else # minimum energy was not reached
+						echo "Relaxation of ${file} has not finished at minimum energy. Relaunching simulations."
+						if [ -f sub/$file ]; then
+							rm sub/$file
+						fi
+						TIME=24:00:00 mpisubmit $file bin/jam `_cmdline $file` suffix=${suff} lread
+					fi
+				fi
+			done
+
+		done
+
+EOF
+
+printf "\n"
+echo "Copying new files from HPC2N to local."
+mkdir -p ${LP}/relax_outputs
+for user in `echo $US`; do
+	rsync --quiet -avh -e ssh ${HP}:/pfs/nobackup/home/${user:0:1}/${user}/hpc2n/jam-2018/Elli-relax/outputs/* ${LP}/relax_outputs
+done
+# scp hpc2n:/pfs/nobackup/home/y/yketa/hpc2n/jam-2018/Elli-relax/outputs/* /Users/yketa/Cours/ENS/M1/Stage/Umeå/simulations/relax_outputs
+
+echo "Copying new files from local to tp.umu.se."
+ssh ${LA} "mkdir -p ${LA}:${TP}/outputs"
+rsync --quiet -avh -e ssh ${LP}/relax_outputs/* ${LA}:${TP}/outputs
+# scp /Users/yketa/Cours/ENS/M1/Stage/Umeå/simulations/relax_outputs/* umea_lab:/home/yketa/Desktop/Elli-relax/outputs
+printf "\n"
+
+else
+	echo "Not updating the output files."
+	printf "\n"
+fi
+
+ssh ${LA} "bash -s $NU $TP $GZ , $GP" << 'EOF' # executes on tp.umu.se
+
+	NU=$1 # simulations with N=NU particles
+	shift
+	TP=$1 # tp.umu.se path to relaxation simulations directory
+	shift
+
+	GU=$@
+	declare -A GZ="(${GU%%,*})" # hash table of guesses of the value of zc
+	declare -A GP="(${GU#*,})" # hash table of guesses of the value of phij
+
+	while (( ${#NU} < 4 )); do
+		NU=0${NU} # number of particles with adequate number of zeros
+	done
+	NNU=${#NU} # number of digits of the number of particles with adequate number of zeros
+	declare -A args # declares the hash table args
+	args=(["N"]="0" ["r"]="$((2+$NNU))" ["GD"]="$((9+$NNU))" ["KD"]="$((16+$NNU))" ["M"]="$((22+$NNU))" ["EL"]="$((29+$NNU))" ["SUFF"]="$((39+$NNU))") # hash table of the positions of the arguments
+
+	declare -A exponents # declares the hash table exponents
+	exponents=(["a"]="e-11" ["b"]="e-10" ["c"]="e-9" ["d"]="e-8" ["e"]="e-7" ["f"]="e-6" ["g"]="e-5" ["h"]="e-4" ["i"]="e-3" ["j"]="e-2" ["k"]="e-1" ["l"]="e0" ["m"]="e1") # dictionnary of the exponents
+
+	echo "Simulations directory: ${TP} on $(whoami)@$HOSTNAME"
+	printf "\n"
+
+	cd ${TP}/outputs # directory of the output files of the relaxation simulations
+
+	# tau*_*_EL*.*, zr_phi_*_EL*.plo, dz_tau_*_GD*_EL*.plo and tau_dphi_*_GD*_EL*.plo
+
+	EL=($(for file in `ls | grep .ttime | grep $NU`; do echo ${file:${args[EL]}:3}; done | sort)) # array of the aspect ratios
+	_EL=() # aspect ratios which have been already treated
+
+	mkdir -p ../tau_zr_outputs
+
+	mkdir -p ../relax_plots
+	mkdir -p ../relax_plots/tau_phi
+	mkdir -p ../relax_plots/zr_phi
+	mkdir -p ../relax_plots/dz_tau
+	mkdir -p ../relax_plots/tau_dphi
+	mkdir -p ../relax_plots/pe_t
+	mkdir -p ../relax_plots/z_t
+
+	mkdir -p ../relax_figs
+	mkdir -p ../relax_figs/tau_phi
+	mkdir -p ../relax_figs/zr_phi
+	mkdir -p ../relax_figs/dz_tau
+	mkdir -p ../relax_figs/tau_dphi
+	mkdir -p ../relax_figs/pe_t
+	mkdir -p ../relax_figs/z_t
+
+	for el in $(seq 0 $((${#EL[@]}-1))); do
+
+		if [[ ! "${_EL[@]}" =~ "${EL[$el]}" ]]; then # if the aspect ration ${EL[$el]} has not been treated yet
+
+			_EL+=(${EL[$el]}) # we add the current aspect ratio to the already treated array
+
+			> ../tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.out # plo data
+			echo "icol N rho gdot kd m alpha suff tau zr" >> ../tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.out
+			> ../tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.csv # csv data
+			echo "N,rho,gdot,kd,m,alpha,suff,tau,zr," >> ../tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.csv
+
+			Nfiles=`ls | grep .ttime | grep $NU | grep ${EL[$el]} | wc -l` # number of files to treat
+			echo "Reading from $Nfiles files with alpha=${EL[$el]:0:1}.${EL[$el]:1:2}."
+
+			GD_=() # arrays of the shearing strain rates (with Olsson's notation)
+
+			for file in `ls | grep .ttime | grep $NU | grep ${EL[$el]}`; do # reading each file in order to extract the relaxation time
+
+				if [[ ! "${GD_[@]}" =~ "${file:${args[GD]}:4}" ]]; then
+					GD_+=(${file:${args[GD]}:4})
+				fi
+
+				file=`echo $file | sed s,.ttime,,`
+
+				tau="`( plo <<EOF2
+< ${file}.ttime
+cal is rh gdr select(isuff,rho,gdotr,ti=0)
+icol a0 a1
+get linreg(ln(pe),time,pe>1e-8&pe<1e-4&isuff=is[0]&rho=rh[0]&gdotr=gdr[0])
+list 0-1/a1
+EOF2
+				) | grep -v Plo`" # relaxation time, inferred from a linear regression
+
+				zr="`( plo <<EOF2
+< ${file}.ltot
+list zr
+EOF2
+				) | grep -v Plo`" # average coordination number
+
+				values="${NU} 0.${file:${args[r]}:4} ${file:$((${args[GD]}+1)):1}.${file:$((${args[GD]}+2)):2}${exponents[${file:${args[GD]}:1}]} ${file:$((${args[KD]}+1)):1}.${file:$((${args[KD]}+2)):2}${exponents[${file:${args[KD]}:1}]} ${file:$((${args[M]}+1)):1}.${file:$((${args[M]}+2)):2}${exponents[${file:${args[M]}:1}]} ${file:${args[EL]}:1}.${file:$((${args[EL]}+1)):2} ${file:${args[SUFF]}:5} $tau $zr " # values
+				echo $values >> ../tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.out # writes in plo parsed file
+				echo $values | sed s/' '/','/g >> ../tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.csv # writes in csv parsed data
+
+			done
+
+			GD_=($(for gd in ${GD_[@]}; do echo $gd; done | sort)) # sorted shear strain rates
+			GD=($(for gd in ${GD_[@]}; do echo ${gd:1:1}.${gd:2:2}${exponents[${gd:0:1}]}; done)) # arrays of the shearing strain rates
+
+			( cat <<EOF2
+< ${TP}/tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.out
+
+icol gd
+`for gd in ${GD[@]}; do echo $gd; done`
+
+cal T select(tau,1=1$(if [[ ${EL[$el]} = 090 ]]; then echo '&rho>0.67'; fi))
+gr 0,,gd.n1-1 tau rho -line -sel gdot=gd[#]$(if [[ ${EL[$el]} = 090 ]]; then echo '&rho>0.67'; fi)
+gr 0,,gd.n1-1 -mark 500 6000-#*600 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
+
+gr gd.n1 -mark 500 6000-(gd.n1+1)*600 -text "\${\scriptstyle \alpha = %g}\$" alpha[0]
+gr gd.n1+1 -mark 500 6000-(gd.n1+2)*600 -text "\${\scriptstyle N = %5.0f}\$" N[0]
+
+xl - - lin
+yl - T.max lin
+
+xtext \$\phi\$
+ytext \$\tau\$
+
+latexps ${TP}/relax_figs/tau_phi/tau_phi_${NU}_EL${EL[$el]}
+EOF2
+			) > ../relax_plots/tau_phi/tau_phi_${NU}_EL${EL[$el]}.plo # plotting file of the relaxation time vs. the packing fraction
+			( plo < ../relax_plots/tau_phi/tau_phi_${NU}_EL${EL[$el]}.plo ) &> /dev/null
+			echo d >> ../relax_plots/tau_phi/tau_phi_${NU}_EL${EL[$el]}.plo
+
+			( cat <<EOF2
+`for file in $(ls ${TP}/outputs/${NU}_*_EL${EL[$el]}_* | grep .ltot); do echo "< ${file}"; done`
+
+icol gd
+`for gd in ${GD[@]}; do echo $gd; done`
+
+cal xzr select(rho,zr>0)
+gr 0,,gd.n1-1 zr rho -line -sel gdotr=gd[#]
+gr 0,,gd.n1-1 -mark 8000 5400-#*600 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
+
+gr gd.n1 -mark 8000 5400-(gd.n1+1)*600 -text "\${\scriptstyle \alpha = %g}\$" alpha[0]
+gr gd.n1+1 -mark 8000 5400-(gd.n1+2)*600 -text "\${\scriptstyle N = %5.0f}\$" N[0]
+
+xl xzr.min xzr.max lin
+yl - - lin
+
+xtext \$\phi\$
+ytext \$z\$
+
+latexps ${TP}/relax_figs/zr_phi/zr_phi_${NU}_EL${EL[$el]}
+EOF2
+			) > ../relax_plots/zr_phi/zr_phi_${NU}_EL${EL[$el]}.plo # plotting file of the contact number vs. the packing fraction
+			( plo < ../relax_plots/zr_phi/zr_phi_${NU}_EL${EL[$el]}.plo ) &> /dev/null
+			echo d >> ../relax_plots/zr_phi/zr_phi_${NU}_EL${EL[$el]}.plo
+
+			if [[ ! "${GZ[${EL[$el]}]}" = '' ]]; then
+
+				for gd in $(seq 0 $((${#GD[@]}-1))); do
+
+					( cat <<EOF2
+< ${TP}/tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.out
+
+icol zc
+`for zc in ${GZ[${EL[$el]}]}; do echo $zc; done`
+
+cal z select(zr,zr>0&gdot=${GD[$gd]}&tau>1e3)
+cal xtau select(tau,zr>0&gdot=${GD[$gd]}&tau>1e3)
+
+gr 0,,zc.n1-1 zc[#]-zr tau -line -sel gdot=${GD[$gd]}&tau>1e3
+gr 0,,zc.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle z_c=%g}\$" zc[#]
+
+gr zc.n1 -mark 500 500 -text "\${\scriptstyle \alpha=%6.2f,~ \dot{\gamma}=${GD[$gd]}}\$" alpha[0]
+gr zc.n1+1 -mark 500 1000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
+
+xl exp((3*ln(xtau.min)-ln(xtau.max))/2) exp((3*ln(xtau.max)-ln(xtau.min))/2) log
+yl exp((19*ln(zc.min-z.max)-ln(zc.max-z.min))/18) exp((19*ln(zc.max-z.min)-ln(zc.min-z.max))/18) log
+
+xtext \$\tau\$
+ytext \$z_c-z_r\$
+
+latexps ${TP}/relax_figs/dz_tau/dz_tau_${NU}_GD${GD_[$gd]}_EL${EL[$el]}
+EOF2
+					) > ../relax_plots/dz_tau/dz_tau_${NU}_GD${GD_[$gd]}_EL${EL[$el]}.plo # plotting file of the difference to the critical coordination number vs. the relaxation time for different guesses of zc per value of the shear rate
+					( plo < ../relax_plots/dz_tau/dz_tau_${NU}_GD${GD_[$gd]}_EL${EL[$el]}.plo ) &> /dev/null
+					echo d >> ../relax_plots/dz_tau/dz_tau_${NU}_GD${GD_[$gd]}_EL${EL[$el]}.plo
+
+				done
+
+				for zc in ${GZ[${EL[$el]}]}; do
+
+					# critical coordination number with appropriate number of zeros
+					ZC=${zc%%.*}
+					while (( ${#ZC} < 2 )); do
+						ZC=0${ZC}
+					done
+					ZC=${ZC}${zc#*.}
+					while (( ${#ZC} < 6 )); do
+						ZC=${ZC}0
+					done
+
+					( cat <<EOF2
+< ${TP}/tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.out
+
+icol gd
+`for gd in ${GD[@]}; do echo $gd; done`
+
+cal zc $zc
+
+cal z select(zr,zr>0&tau>1e3)
+cal xtau select(tau,zr>0&tau>1e3)
+
+gr 0,,gd.n1-1 zc-zr tau -line -sel gdot=gd[#]&zr>0&tau>1e3
+gr 0,,gd.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
+
+icol a0 a1
+get linreg(ln(zc-zr),ln(tau),zr>0&tau>1e3)
+cal betauz 0-1/a1[0]
+
+icol x
+for i 0 100 get exp(ln(xtau.min)+i*(ln(xtau.max)-ln(xtau.min))/100)
+gr gd.n1 exp(a0[0]+a1[0]*ln(x)) x -Line
+gr gd.n1 -mark 7000 6500 -text "\${\scriptstyle \beta/u_z=%g}\$" betauz
+
+gr gd.n1+1 -mark 500 500 -text "\${\scriptstyle \alpha=%6.2f}\$" alpha[0]
+gr gd.n1+2 -mark 500 1000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
+gr gd.n1+3 -mark 7000 6000 -text "\${\scriptstyle z_{\scriptscriptstyle c}=%g}\$" zc
+
+xl exp((3*ln(xtau.min)-ln(xtau.max))/2) exp((3*ln(xtau.max)-ln(xtau.min))/2) log
+yl exp((19*ln(zc-z.max)-ln(zc-z.min))/18) exp((19*ln(zc-z.min)-ln(zc-z.max))/18) log
+
+xtext \$\tau\$
+ytext \$z_c-z_r\$
+
+latexps ${TP}/relax_figs/dz_tau/dz_tau_${NU}_ZC${ZC}_EL${EL[$el]}
+EOF2
+					) > ../relax_plots/dz_tau/dz_tau_${NU}_ZC${ZC}_EL${EL[$el]}.plo # plotting file of the difference to the critical coordination number vs. the relaxation time for different shear rates per guess of zc
+					( plo < ../relax_plots/dz_tau/dz_tau_${NU}_ZC${ZC}_EL${EL[$el]}.plo ) &> /dev/null
+					echo d >> ../relax_plots/dz_tau/dz_tau_${NU}_ZC${ZC}_EL${EL[$el]}.plo
+
+				done
+
+			else
+				echo "No values of zc specified for alpha=${EL[$el]:0:1}.${EL[$el]:1:2}."
+			fi
+
+			if [[ ! "${GP[${EL[$el]}]}" = '' ]]; then
+
+				for gd in $(seq 0 $((${#GD[@]}-1))); do
+
+					( cat <<EOF2
+< ${TP}/tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.out
+
+icol phij
+`for phij in ${GP[${EL[$el]}]}; do echo $phij; done`
+
+cal phi select(rho,gdot=${GD[$gd]}&tau>1e3&zr>0)
+cal ytau select(tau,gdot=${GD[$gd]}&tau>1e3&zr>0)
+
+gr 0,,phij.n1-1 tau phij[#]-rho -line -sel gdot=${GD[$gd]}&tau>1e3&zr>0
+gr 0,,phij.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \phi_J=%g}\$" phij[#]
+
+gr phij.n1 -mark 500 500 -text "\${\scriptstyle \alpha=%6.2f,~ \dot{\gamma}=${GD[$gd]}}\$" alpha[0]
+gr phij.n1+1 -mark 500 1000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
+
+xl exp((3*ln(phij.min-phi.max)-ln(phij.max-phi.min))/2) exp((3*ln(phij.max-phi.min)-ln(phij.min-phi.max))/2) log
+yl exp((19*ln(ytau.min)-ln(ytau.max))/18) exp((19*ln(ytau.max)-ln(ytau.min))/18) log
+
+xtext \$\phi_J-\phi\$
+ytext \$\tau\$
+
+latexps ${TP}/relax_figs/tau_dphi/tau_dphi_${NU}_GD${GD_[$gd]}_EL${EL[$el]}
+EOF2
+					) > ../relax_plots/tau_dphi/tau_dphi_${NU}_GD${GD_[$gd]}_EL${EL[$el]}.plo # plotting file of the relaxation time vs. the difference to the jamming density
+					( plo < ../relax_plots/tau_dphi/tau_dphi_${NU}_GD${GD_[$gd]}_EL${EL[$el]}.plo ) &> /dev/null
+					echo d >> ../relax_plots/tau_dphi/tau_dphi_${NU}_GD${GD_[$gd]}_EL${EL[$el]}.plo
+
+				done
+
+				for pj in ${GP[${EL[$el]}]}; do
+
+					# critical coordination number with appropriate number of zeros
+					PJ=${pj#*.}
+					while (( ${#PJ} < 5 )); do
+						PJ=${PJ}0
+					done
+
+					( cat <<EOF2
+< ${TP}/tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.out
+
+icol gd
+`for gd in ${GD[@]}; do echo $gd; done`
+
+cal phij $pj
+
+cal phi select(rho,tau>1e3&zr>0)
+cal ytau select(tau,tau>1e3&zr>0)
+
+gr 0,,gd.n1-1 tau phij-rho -line -sel gdot=gd[#]&tau>1e3&zr>0
+gr 0,,gd.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
+
+icol a0 a1
+get linreg(ln(tau),ln(phij-rho),tau>1e3&zr>0)
+cal beta 0-a1[0]
+
+icol x
+for i 0 100 get exp(ln(phij-phi.min)+i*(ln(phij-phi.max)-ln(phij-phi.min))/100)
+gr gd.n1 exp(a0[0]+a1[0]*ln(x)) x -Line
+gr gd.n1 -mark 7000 6500 -text "\${\scriptstyle \beta=%g}\$" beta
+
+gr gd.n1+1 -mark 500 500 -text "\${\scriptstyle \alpha=%6.2f}\$" alpha[0]
+gr gd.n1+2 -mark 500 1000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
+gr gd.n1+3 -mark 7000 6000 -text "\${\scriptstyle \phi_{\scriptscriptstyle J}=%g}\$" phij
+
+xl exp((3*ln(phij-phi.max)-ln(phij-phi.min))/2) exp((3*ln(phij-phi.min)-ln(phij-phi.max))/2) log
+yl exp((19*ln(ytau.min)-ln(ytau.max))/18) exp((19*ln(ytau.max)-ln(ytau.min))/18) log
+
+xtext \$\phi_J-\phi\$
+ytext \$\tau\$
+
+latexps ${TP}/relax_figs/tau_dphi/tau_dphi_${NU}_PJ${PJ}_EL${EL[$el]}
+EOF2
+					) > ../relax_plots/tau_dphi/tau_dphi_${NU}_PJ${PJ}_EL${EL[$el]}.plo # plotting file of the difference to the critical coordination number vs. the relaxation time for different shear rates per guess of zc
+					( plo < ../relax_plots/tau_dphi/tau_dphi_${NU}_PJ${PJ}_EL${EL[$el]}.plo ) &> /dev/null
+					echo d >> ../relax_plots/tau_dphi/tau_dphi_${NU}_PJ${PJ}_EL${EL[$el]}.plo
+
+				done
+
+			else
+				echo "No values of phij specified for alpha=${EL[$el]:0:1}.${EL[$el]:1:2}."
+			fi
+
+		fi
+
+	done
+
+	# pe_t_*.plo and z_t_*.plo
+
+	for file in `ls | grep .ttime | grep $NU`; do
+
+		( cat <<EOF2
+< ${TP}/outputs/${file}
+
+gr 0 pe time
+
+gr 1 -mark 500 1000 -text "\${\scriptstyle \alpha = %g}\$" alpha[0]
+gr 2 -mark 500 1600 -text "\${\scriptstyle N = %5.0f}\$" N[0]
+gr 3 -mark 500 2200 -text "\${\scriptstyle \dot{\gamma} =  %g}\$" gdotr[0]
+gr 4 -mark 500 2800 -text "\${\scriptstyle \phi = %g}\$" rho[0]
+
+xl - - lin
+yl - - log
+
+xtext \$t\$
+ytext \$p_e\$
+
+latexps ${TP}/relax_figs/pe_t/pe_t_${NU}_${file:$((${args[EL]}-2)):5}_${file:$((${args[r]}-1)):5}_${file:$((${args[GD]}-2)):6}
+EOF2
+		) > ../relax_plots/pe_t/pe_t_${NU}_${file:$((${args[EL]}-2)):5}_${file:$((${args[r]}-1)):5}_${file:$((${args[GD]}-2)):6}.plo
+		( plo < ../relax_plots/pe_t/pe_t_${NU}_${file:$((${args[EL]}-2)):5}_${file:$((${args[r]}-1)):5}_${file:$((${args[GD]}-2)):6}.plo ) &> /dev/null
+		echo d >> ../relax_plots/pe_t/pe_t_${NU}_${file:$((${args[EL]}-2)):5}_${file:$((${args[r]}-1)):5}_${file:$((${args[GD]}-2)):6}.plo
+
+		( cat <<EOF2
+< ${TP}/outputs/${file}
+
+gr 0 z time
+
+gr 1 -mark 8000 1000 -text "\${\scriptstyle \alpha = %g}\$" alpha[0]
+gr 2 -mark 8000 1600 -text "\${\scriptstyle N = %5.0f}\$" N[0]
+gr 3 -mark 8000 2200 -text "\${\scriptstyle \dot{\gamma} =  %g}\$" gdotr[0]
+gr 4 -mark 8000 2800 -text "\${\scriptstyle \phi = %g}\$" rho[0]
+
+xl - - lin
+yl - - lin
+
+xtext \$t\$
+ytext \$z\$
+
+latexps ${TP}/relax_figs/z_t/z_t_${NU}_${file:$((${args[EL]}-2)):5}_${file:$((${args[r]}-1)):5}_${file:$((${args[GD]}-2)):6}
+EOF2
+		) > ../relax_plots/z_t/z_t_${NU}_${file:$((${args[EL]}-2)):5}_${file:$((${args[r]}-1)):5}_${file:$((${args[GD]}-2)):6}.plo
+		( plo < ../relax_plots/z_t/z_t_${NU}_${file:$((${args[EL]}-2)):5}_${file:$((${args[r]}-1)):5}_${file:$((${args[GD]}-2)):6}.plo ) &> /dev/null
+		echo d >> ../relax_plots/z_t/z_t_${NU}_${file:$((${args[EL]}-2)):5}_${file:$((${args[r]}-1)):5}_${file:$((${args[GD]}-2)):6}.plo
+
+	done
+
+EOF
+
+printf "\n"
+echo "Copying new relaxation times data files from tp.umu.se to local."
+mkdir -p ${LP}/relax_tau_zr_outputs
+rsync --quiet -avh -e ssh ${LA}:${TP}/tau_zr_outputs/* ${LP}/relax_tau_zr_outputs # copies new relaxation times data files to local
+# scp -q ${LA}:${TP}/tau_outputs/* ${LP}/relax_tau_outputs # copies every relaxation times data files to local
+
+echo "Copying new plo scripts from tp.umu.se to local."
+mkdir -p ${LP}/relax_plots
+# rsync --quiet -avh -e -r ssh ${LA}:${TP}/relax_plots ${LP}/relax_plots # copies new plotting files to local
+scp -q -r ${LA}:${TP}/relax_plots ${LP} # copies every plotting files to local
+
+echo "Copying new figures from tp.umu.se to local."
+mkdir -p ${LP}/relax_figs
+# rsync --quiet -avh -e -r ssh ${LA}:${TP}/relax_figs ${LP}/relax_figs # copies new figures to local
+scp -q -r ${LA}:${TP}/relax_figs ${LP} # copies every figures to local

@@ -1,0 +1,54 @@
+#! /bin/sh
+
+# Run plo scripts (Peter Olsson) for scaling on landau.tp.umu.se and copy resulting plots to yketa.
+
+path=~/Cours/ENS/M1/Stage/Umeå/simulations/
+
+if [ $# -gt 0 ]; then # plot the scale plot files in input
+
+	for file in "$@"; do
+
+			if [ ! -f $file ]; then # file does not exist
+				echo ${file}' does not exist.'
+			else # file exists
+
+				plotname=`echo $file | sed s,^.*/,,g | sed s,'scale_','',` # erases everything until the last / and "scale_"
+				echo $plotname
+				ssh umea_lab "~/bin/plo" < $file # plotting
+
+				figname=`echo $plotname | sed s/.plo/.ps/` # figure.plo > figure.ps
+				fig1=p-phi_${figname} # figure.ps > p-phi_figure.ps
+				fig2=p-dphi-scale_${figname} # figure.ps > p-dphi-scale_figure.ps
+				fig3=etap-phi_${figname} # figure.ps > etap-phi_figure.ps
+				fig4=error_${figname} # figure.ps > error_figure.ps
+				for fig in $fig1 $fig2 $fig3 $fig4; do
+					scp umea_lab:~/Desktop/Elli/scale_figs/$fig $path/scale_figs # get figure
+						# we assume that figures are always saved to ~/Desktop/Elli/scale_figs/
+					open $path/scale_figs/$fig
+				done
+
+			fi
+	done
+
+else # plot all the files in simulations/scale_plots
+
+	for file in `ls $path/scale_plots/ | grep .plo`; do
+
+		plotname=`echo $file | sed s,^.*/,,g | sed s,'scale_','',` # erases everything until the last / and "scale_"
+
+				ssh umea_lab "~/bin/plo" < $path/scale_plots/$file # plotting
+
+				figname=`echo $plotname | sed s/.plo/.ps/` # figure.plo > figure.ps
+				fig1=p-phi_${figname} # figure.ps > p-phi_figure.ps
+				fig2=p-dphi-scale_${figname} # figure.ps > p-dphi-scale_figure.ps
+				fig3=etap-phi_${figname} # figure.ps > etap-phi_figure.ps
+				fig4=error_${figname} # figure.ps > error_figure.ps
+				for fig in $fig1 $fig2 $fig3 $fig4; do
+					scp umea_lab:~/Desktop/Elli/scale_figs/$fig $path/scale_figs # get figure
+						# we assume that figures are always saved to ~/Desktop/Elli/scale_figs/
+					open $path/scale_figs/$fig
+				done
+
+	done
+
+fi

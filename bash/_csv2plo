@@ -1,0 +1,17 @@
+#! /bin/sh
+
+# Write the plo data file correponding to a .csv table.
+
+IN=$1 # input file (.csv)
+if [[ "$IN" = '' ]] || [ ! -f $IN ]; then
+	echo "No input file or input file does not exist."
+	exit 0
+fi
+OUT=${2-data.out} # output file (plo data file)
+
+IFS=''
+LN=0 # line number
+( while read line; do
+	echo $(if [[ "$LN" = 0 ]]; then echo 'icol '; fi)$(echo $line | sed s/','/' '/g)
+	LN=$(($LN+1)) # increment line number
+done < $IN ) > $OUT

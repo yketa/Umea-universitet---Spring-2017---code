@@ -1,0 +1,17 @@
+#! /bin/bash
+
+ssh -X umea_lab "bash" << 'EOF'
+
+	plo
+
+	a="`( plo <<EOF2
+icol a b
+1 2
+2 4
+3 6
+gr 0 a b
+d
+EOF2
+	)`"
+
+EOF
