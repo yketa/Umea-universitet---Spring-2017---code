@@ -383,6 +383,9 @@ cal X (rho-\$rhoc)*gdot^\$h
 cal Sel abs(X)<\`XMAX&engr>3&gdot<=\`GDOTMAX&gdot>=\`GDOTMIN
 cal etapq select(pe/gdot^\$q,Sel)
 
+cal yetapqmin exp(2*ln(etapq.min)-ln(etapq.max))
+cal yetapqmax exp(2*ln(etapq.max)-ln(etapq.min))
+
 gr 0,,gd.n1-1 pe/gdot^\$q X -err pe?/gdot^\$q -sel gdot=gd[#]&Sel
 
 icol x
@@ -390,13 +393,13 @@ for i -50 50 get i/100
 gr gd.n1 exp(\$a0+x*(\$a1+x*(\$a2+x*(\$a3+x*(\$a4+x*\$a5))))) x -Line
 
 gr gd.n1 -mark 800 800 -text "\${\scriptscriptstyle f(X)=\exp\left(\sum_{i=0}^{5}a_iX^i\right)}\$"
-gr gd.n1+1 -mark 6000 800 -text "\${\scriptstyle \phi_{\scriptscriptstyle J}=%6.4f\pm%6.6f}\$" rhoc[rhoc.n1-1] rhocsd[rhocsd.n1-1]
-gr gd.n1+2 -mark 800 5800 -text "\${\scriptstyle q=%5.3f\pm%5.5f,~ h=%5.3f\pm%5.5f}\$" q[q.n1-1] qsd[qsd.n1-1] h[h.n1-1] hsd[hsd.n1-1]
+gr gd.n1+1 -mark 6000 800 -text "\${\scriptstyle \phi_{\scriptscriptstyle J}=%6.4f\pm%6.5f}\$" rhoc[rhoc.n1-1] rhocsd[rhocsd.n1-1]
+gr gd.n1+2 -mark 800 5800 -text "\${\scriptstyle q=%5.3f\pm%5.4f,~ h=%5.3f\pm%5.4f}\$" q[q.n1-1] qsd[qsd.n1-1] h[h.n1-1] hsd[hsd.n1-1]
 gr gd.n1+3 -mark 800 6300 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alpha=%6.2f}\$" N[0] kd[0] m[0] alpha[0]
 gr gd.n1+4 -mark 800 5300 -text "\${\scriptstyle \chi^2/DOF=%3.2f}\$" chisq[chisq.n1-1]
 
 xl -0.6 0.6 lin
-yl exp(2*ln(etapq.min)-ln(etapq.max)) exp(2*ln(etapq.max)-ln(etapq.min)) log
+yl yetapqmin yetapqmax log
 
 ctext pe/gdot^\$q \$p_e/\dot\gamma^{q_p}\$
 ctext X \$(\phi-\phi_J)\dot\gamma^{h_p}\$
@@ -408,6 +411,9 @@ fig c
 
 cal etap select(pe/gdot,rho>=xminetap&rho<=xmaxetap)
 
+cal yetapmin exp((9*ln(etap.min)-ln(etap.max))/8)
+cal yetapmax exp((9*ln(etap.max)-ln(etap.min))/8)
+
 cal P (\$rhoc-xminetap)^beta*exp((9*ln(etap.min)+ln(etap.max))/10)
 
 gr 0,,gd.n1-1 pe/gdot rho -err pe?/gdot -sel gdot=gd[#]&rho>=xminetap&rho<=xmaxetap -line
@@ -418,10 +424,10 @@ gr gd.n1 P/(\$rhoc-rr)^beta rr -Dash -rgb 0 0 0
 
 gr gd.n1 -mark 800 5500 -text "\${\scriptstyle (\phi_J-\phi)^{-\beta}}\$"
 gr gd.n1+1 -mark 800 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alpha=%6.2f}\$" N[0] kd[0] m[0] alpha[0]
-gr gd.n1+2 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f\pm%3.4f}\$" beta betasd
+gr gd.n1+2 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f\pm%3.3f}\$" beta betasd
 
 xl (9*xminetap-xmaxetap)/8 (9*xmaxetap-xminetap)/8 lin
-yl exp((9*ln(etap.min)-ln(etap.max))/8) exp((9*ln(etap.max)-ln(etap.min))/8) log
+yl yetapmin yetapmax log
 
 ctext pe/gdot \$p_e/\dot\gamma\$
 
@@ -431,6 +437,9 @@ latexps ${TP}/${FI}/scale/etap-phi/etap-phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}
 fig d
 
 cal etap select(pe/gdot,Selb)
+
+cal yetapmin exp((3*ln(etap.min)-ln(etap.max))/2)
+cal yetapmax exp((3*ln(etap.max)-ln(etap.min))/2)
 
 cal etap1 etap.min
 cal etap2 etap.max
@@ -461,7 +470,7 @@ gr gd.n1+2 -mark 800 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alph
 gr gd.n1+3 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f,~ \phi_J=%3.4f}\$" beta phij
 
 xl exp((9*ln(xeb.min)-ln(xeb.max))/8) exp((9*ln(xeb.max)-ln(xeb.min))/8) log
-yl exp((3*ln(etap.min)-ln(etap.max))/2) exp((3*ln(etap.max)-ln(etap.min))/2) log
+yl yetapmin yetapmax log
 
 xtext \$\phi_J-\phi_{eff}\$
 
@@ -499,7 +508,7 @@ gr gd.n1+2 -mark 800 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alph
 gr gd.n1+3 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f,~ \phi_J=%3.4f}\$" beta phij
 
 xl exp((9*ln(xe.min)-ln(xe.max))/8) exp((9*ln(xe.max)-ln(xe.min))/8) log
-yl exp((3*ln(etap.min)-ln(etap.max))/2) exp((3*ln(etap.max)-ln(etap.min))/2) log
+yl yetapmin yetapmax log
 
 xtext \$\phi_J-\phi_{eff}\$
 
