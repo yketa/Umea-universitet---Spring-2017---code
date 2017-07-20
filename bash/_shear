@@ -73,7 +73,8 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	mkdir -p ${PL}/rheo
 	mkdir -p ${PL}/cr_exp
 	mkdir -p ${PL}/orij_phi
-	if [ -f bin/ltot ]; then mkdir -p ${PL}/zr_phi; else mkdir -p ${PL}/z_phi; fi
+	mkdir -p ${PL}/z_phi
+	if [ -f bin/ltot ]; then mkdir -p ${PL}/zr_phi; fi
 
 	mkdir -p $FI
 	mkdir -p ${FI}/scale
@@ -90,7 +91,8 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	mkdir -p ${FI}/cr_exp/phij
 	mkdir -p ${FI}/orij_phi
 	mkdir -p ${FI}/orij_phieff
-	if [ -f bin/ltot ]; then mkdir -p ${FI}/zr_phi; else mkdir -p ${FI}/z_phi; fi
+	mkdir -p ${FI}/z_phi
+	if [ -f bin/ltot ]; then mkdir -p ${FI}/zr_phi; fi
 
 	printf "\n"
 
@@ -111,7 +113,11 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	EL=($(for file in ${files[@]}; do echo ${file:${args[EL]}:3}; done | sort)) # array of the aspect ratios
 	_EL=() # aspect ratios which have been already treated
 
-	col=( N kd m alpha phij phijsd beta betasd q qsd h hsd chisq A Asd c csd chisqb Ag cg ) # data to be measured
+	col0=( N kd m alpha ) # external parameters
+	col1=( phij phijsd beta betasd q qsd h hsd chisq ) # data to be measured with Levenberg-Marquadt
+	col2=( A Asd c csd chisqb ) # data to be measured with Levenberg-Marquadt
+	col3=( Ag cg ) # data to be measured graphically
+	col=( ${col0[@]} ${col1[@]} ${col2[@]} ${col3[@]} ) # data to be measured
 	> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.out # plo data
 	echo "icol ${col[@]}" >> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.out
 	> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.csv # csv data
@@ -139,9 +145,11 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 			GD_=($(for gd in ${GD_[@]}; do echo $gd; done | sort)) # sorted shear strain rates
 			GD=($(for gd in ${GD_[@]}; do echo ${gd:1:1}.${gd:2:2}${exponents[${gd:0:1}]}; done)) # arrays of the shearing strain rates
 
-			# cr_exp_*_KD*_M*.*
+			# cr_exp_*_KD*_M*.* (measurements are separed to keep errors in one of the measures from avoiding other measures)
 
-			crexp="`( plo <<EOF2
+			crexp=() # critical expontents
+
+			crexp1=( `( plo <<EOF2
 < ${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
 
 cal gdotmax 1e-4
@@ -183,17 +191,41 @@ end
 cal beta (q[q.n1-1]-1)/h[h.n1-1]
 cal betasd beta*sqrt((qsd[qsd.n1-1]/q[q.n1-1])^2+(hsd[hsd.n1-1]/h[h.n1-1])^2)
 
-cal xminetap \\$rhoc-0.05
-cal xmaxetap \\$rhoc+0.02
+list rhoc[rhoc.n1-1] rhocsd[rhocsd.n1-1] beta betasd q[q.n1-1] qsd[qsd.n1-1] h[h.n1-1] hsd[hsd.n1-1] chisq[chisq.n1-1]
+exit
+EOF2
+			) | grep -v Plo | grep -v '...>'` ) # critical exponents, inferred from the Levenberg–Marquardt least squared curve fitting method
+			if [[ "${#crexp1[@]}" = "${#col1[@]}" ]]; then # no errors in the measurement
+				crexp+=( ${crexp1[@]} )
+			else
+				crexp+=( $(for i in $(seq 1 ${#col1[@]}); do echo 0; done) )
+			fi
+
+			crexp2=( `( plo <<EOF2
+< ${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+cal gdotmax 1e-4
+cal gdotmin 1e-5
+cal xmax 0.4
+
+cal sdfact sqrt((engr-1)/(engr-3))
+cal phi rho
+
+cal phij ${crexp[0]}
+cal beta ${crexp[2]}
+cal q ${crexp[4]}
+cal h ${crexp[6]}
+
+cal xminetap phij-0.05
+cal xmaxetap phij+0.02
 cal Selb rho>=xminetap&rho<=xmaxetap&pe>0
 
-cal w -0.5*h[h.n1-1]/q[q.n1-1]
-cal phij rhoc[rhoc.n1-1]
+cal w -0.5*h/q
 
 cal \\$A 0.0004
 cal \\$c 1.5
 
-# cal Xb (phi-rhoc[rhoc.n1-1])*gdot^h[h.n1-1]
+# cal Xb (phi-phij)*gdot^h
 # cal Selb abs(Xb)<xmax&engr>3&gdot<=gdotmax&gdot>=gdotmin
 
 for nn 1 10
@@ -204,6 +236,37 @@ gdot*btot^(-beta),
 -gdot*\\$A*beta*energy^w*btot^(-beta-1),
 Selb)
 end
+
+list A[A.n1-1] Asd[Asd.n1-1] c[c.n1-1] csd[csd.n1-1] chisqb[chisqb.n1-1]
+exit
+EOF2
+			) | grep -v Plo | grep -v '...>'` ) # critical exponents, inferred from the Levenberg–Marquardt least squared curve fitting method
+			if [[ "${#crexp2[@]}" = "${#col2[@]}" ]]; then # no errors in the measurement
+				crexp+=( ${crexp2[@]} )
+			else
+				crexp+=( $(for i in $(seq 1 ${#col2[@]}); do echo 0; done) )
+			fi
+
+			crexp3=( `( plo <<EOF2
+< ${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+cal gdotmax 1e-4
+cal gdotmin 1e-5
+cal xmax 0.4
+
+cal sdfact sqrt((engr-1)/(engr-3))
+cal phi rho
+
+cal phij ${crexp[0]}
+cal beta ${crexp[2]}
+cal q ${crexp[4]}
+cal h ${crexp[6]}
+
+cal xminetap phij-0.05
+cal xmaxetap phij+0.02
+cal Selb rho>=xminetap&rho<=xmaxetap&pe>0
+
+cal w -0.5*h/q
 
 cal etap select(pe/gdot,Selb)
 
@@ -222,16 +285,21 @@ cal phi2 phi2[0]
 cal C (((phij-phi1)/(E1^w)+(phi2-phij)/(E2^w))/((etap1^(-1/beta))/(E1^w)-(etap2^(-1/beta))/(E2^w)))^beta
 cal d ((etap2/C)^(-1/beta)+phi2-phij)/(E2^w)
 
-list rhoc[rhoc.n1-1] rhocsd[rhocsd.n1-1] beta betasd q[q.n1-1] qsd[qsd.n1-1] h[h.n1-1] hsd[hsd.n1-1] chisq[chisq.n1-1] A[A.n1-1] Asd[Asd.n1-1] c[c.n1-1] csd[csd.n1-1] chisqb[chisqb.n1-1] C d
+list C d
 exit
 EOF2
-			) | grep -v Plo | grep -v '...>'`" # critical exponents, inferred from the Levenberg–Marquardt least squared curve fitting method
-			cr_exp+=( [${EL[$el]}]="$crexp" )
-			crexp=( $crexp )
+			) | grep -v Plo | grep -v '...>'` ) # critical exponents, measured graphically
+			if [[ "${#crexp3[@]}" = "${#col3[@]}" ]]; then # no errors in the measurement
+				crexp+=( ${crexp3[@]} )
+			else
+				crexp+=( $(for i in $(seq 1 ${#col3[@]}); do echo 0; done) )
+			fi
+
+			cr_exp+=( [${EL[$el]}]="${crexp[@]}" )
 			
 			values="${NU} ${K:1:1}.${K:2:2}${exponents[${K:0:1}]} ${MA:1:1}.${MA:2:2}${exponents[${MA:0:1}]} ${EL[$el]:0:1}.${EL[$el]:1:2} ${crexp[@]} " # values
 			values=( $values )
-			if [[ "${#values[@]}" = "${#col[@]}" ]]; then # no error in the determination of the critical exponents
+			if [[ "${#values[@]}" = "${#col[@]}" ]]; then # no error in the determination of the critical exponents (this should always be true because of the previous tests)
 				echo ${values[@]} >> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.out # writes in plo parsed file
 				echo ${values[@]} | sed s/' '/','/g >> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.csv # writes in csv parsed data
 			fi
@@ -288,21 +356,6 @@ cal Selb rho>=xminetap&rho<=xmaxetap&pe>0
 
 cal w -0.5*h[h.n1-1]/q[q.n1-1]
 cal phij rhoc[rhoc.n1-1]
-
-cal \$A 0.0004
-cal \$c 1.5
-
-# cal Xb (phi-rhoc[rhoc.n1-1])*gdot^h[h.n1-1]
-# cal Selb abs(Xb)<\`XMAX&engr>3&gdot<=\`GDOTMAX&gdot>=\`GDOTMIN
-
-for nn 1 10
-icol A c Asd csd chisqb
-get "lmarqsd(pe,pe?*sdfact,
-gdot*\$A*(phij-phi+\$c*energy^w):btot^(-beta),
-gdot*btot^(-beta),
--gdot*\$A*beta*energy^w*btot^(-beta-1),
-Selb)
-end
 
 
 fig a
@@ -379,6 +432,59 @@ fig d
 
 cal etap select(pe/gdot,Selb)
 
+cal etap1 etap.min
+cal etap2 etap.max
+
+cal E1 select(energy,pe/gdot=etap1&Selb)
+cal E1 E1[0]
+cal E2 select(energy,pe/gdot=etap2&Selb)
+cal E2 E2[0]
+cal phi1 select(rho,pe/gdot=etap1&Selb)
+cal phi1 phi1[0]
+cal phi2 select(rho,pe/gdot=etap2&Selb)
+cal phi2 phi2[0]
+
+cal C (((phij-phi1)/(E1^w)+(phi2-phij)/(E2^w))/((etap1^(-1/beta))/(E1^w)-(etap2^(-1/beta))/(E2^w)))^beta
+cal d ((etap2/C)^(-1/beta)+phi2-phij)/(E2^w)
+
+cal xeb select(phij-rho+d*energy^w,Selb)
+
+gr 0,,gd.n1-1 pe/gdot phij-rho+d*energy^w -err pe?/gdot -sel gdot=gd[#]&Selb
+
+icol rrr
+for i exp((19*ln(xeb.min)-ln(xeb.max))/18)*1000 exp((19*ln(xeb.max)-ln(xeb.min))/18)*1000 get i/1000
+gr gd.n1 C*rrr^(-beta) rrr -Line
+
+gr gd.n1 -mark 800 1000 -text "\${\scriptstyle (\phi_J-\phi+ %6.3f E^{\scriptscriptstyle %6.3f})^{-\beta}}\$" d w
+# gr gd.n1+1 -mark 800 500 -text "\${\scriptstyle \chi^2/DOF=%g}\$" chisqb[chisqb.n1-1]
+gr gd.n1+2 -mark 800 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alpha=%6.2f}\$" N[0] kd[0] m[0] alpha[0]
+gr gd.n1+3 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f,~ \phi_J=%3.4f}\$" beta phij
+
+xl exp((9*ln(xeb.min)-ln(xeb.max))/8) exp((9*ln(xeb.max)-ln(xeb.min))/8) log
+yl exp((3*ln(etap.min)-ln(etap.max))/2) exp((3*ln(etap.max)-ln(etap.min))/2) log
+
+xtext \$\phi_J-\phi_{eff}\$
+
+latexps ${TP}/${FI}/scale/etap-phieff_graph/etap-phieff_graph_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+
+fig e
+
+cal \$A 0.0004
+cal \$c 1.5
+
+# cal Xb (phi-rhoc[rhoc.n1-1])*gdot^h[h.n1-1]
+# cal Selb abs(Xb)<\`XMAX&engr>3&gdot<=\`GDOTMAX&gdot>=\`GDOTMIN
+
+for nn 1 10
+icol A c Asd csd chisqb
+get "lmarqsd(pe,pe?*sdfact,
+gdot*\$A*(phij-phi+\$c*energy^w):btot^(-beta),
+gdot*btot^(-beta),
+-gdot*\$A*beta*energy^w*btot^(-beta-1),
+Selb)
+end
+
 cal xe select(phij-rho+c[c.n1-1]*energy^w,Selb)
 
 gr 0,,gd.n1-1 pe/gdot phij-rho+c[c.n1-1]*energy^w -err pe?/gdot -sel gdot=gd[#]&Selb
@@ -398,46 +504,6 @@ yl exp((3*ln(etap.min)-ln(etap.max))/2) exp((3*ln(etap.max)-ln(etap.min))/2) log
 xtext \$\phi_J-\phi_{eff}\$
 
 latexps ${TP}/${FI}/scale/etap-phieff/etap-phieff_${NU}_KD${K}_M${MA}_EL${EL[$el]}
-
-
-fig e
-
-cal etap select(pe/gdot,Selb)
-
-cal etap1 etap.min
-cal etap2 etap.max
-
-cal E1 select(energy,pe/gdot=etap1&Selb)
-cal E1 E1[0]
-cal E2 select(energy,pe/gdot=etap2&Selb)
-cal E2 E2[0]
-cal phi1 select(rho,pe/gdot=etap1&Selb)
-cal phi1 phi1[0]
-cal phi2 select(rho,pe/gdot=etap2&Selb)
-cal phi2 phi2[0]
-
-cal C (((phij-phi1)/(E1^w)+(phi2-phij)/(E2^w))/((etap1^(-1/beta))/(E1^w)-(etap2^(-1/beta))/(E2^w)))^beta
-cal d ((etap2/C)^(-1/beta)+phi2-phij)/(E2^w)
-
-cal xeb select(phij-rho+d*energy^w,Selb)
-
-gr 0,,gd.n1-1 pe/gdot phij-rho+c[c.n1-1]*energy^w -err pe?/gdot -sel gdot=gd[#]&Selb
-
-icol rrr
-for i exp((19*ln(xeb.min)-ln(xeb.max))/18)*1000 exp((19*ln(xeb.max)-ln(xeb.min))/18)*1000 get i/1000
-gr gd.n1 C*rrr^(-beta) rrr -Line
-
-gr gd.n1 -mark 800 1000 -text "\${\scriptstyle (\phi_J-\phi+ %6.3f E^{\scriptscriptstyle %6.3f})^{-\beta}}\$" d w
-# gr gd.n1+1 -mark 800 500 -text "\${\scriptstyle \chi^2/DOF=%g}\$" chisqb[chisqb.n1-1]
-gr gd.n1+2 -mark 800 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alpha=%6.2f}\$" N[0] kd[0] m[0] alpha[0]
-gr gd.n1+3 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f,~ \phi_J=%3.4f}\$" beta phij
-
-xl exp((9*ln(xeb.min)-ln(xeb.max))/8) exp((9*ln(xeb.max)-ln(xeb.min))/8) log
-yl exp((3*ln(etap.min)-ln(etap.max))/2) exp((3*ln(etap.max)-ln(etap.min))/2) log
-
-xtext \$\phi_J-\phi_{eff}\$
-
-latexps ${TP}/${FI}/scale/etap-phieff_graph/etap-phieff_graph_${NU}_KD${K}_M${MA}_EL${EL[$el]}
 
 
 # fig f
@@ -555,19 +621,17 @@ EOF2
 	unset GD; GD=($(for file in ${files[@]}; do echo ${file:${args[GD]}:4}; done | sort)) # array of the shear rates
 	unset _GD; _GD=() # shear rates which have been already treated
 
+	> ${ZR}/z_${NU}_KD${K}_M${MA}.out # plo data
+	> ${ZR}/z_${NU}_KD${K}_M${MA}.csv # csv data
 	if [ -f bin/ltot ]; then
-		> ${ZR}/zr_${NU}_KD${K}_M${MA}.out # plo data
-		echo "icol N rho gdot kd m alpha zr zrsd engr" >> ${ZR}/zr_${NU}_KD${K}_M${MA}.out
-		> ${ZR}/zr_${NU}_KD${K}_M${MA}.csv # csv data
-		echo "N,rho,gdot,kd,m,alpha,zr,zrsd,engr," >> ${ZR}/zr_${NU}_KD${K}_M${MA}.csv
+		echo "icol N rho gdot kd m alpha zr z zsd engr" >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
+		echo "N,rho,gdot,kd,m,alpha,zr,z,zsd,engr," >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
 	else
-		> ${ZR}/z_${NU}_KD${K}_M${MA}.out # plo data
 		echo "icol N rho gdot kd m alpha z zsd engr" >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
-		> ${ZR}/z_${NU}_KD${K}_M${MA}.csv # csv data
 		echo "N,rho,gdot,kd,m,alpha,z,zsd,engr," >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
 	fi
 
-	col=( ${col[@]:4} ) # columns of critical exponents to add to output data files
+	col=( ${col[@]:${#col0[@]}} ) # columns of critical exponents to add to output data files
 
 	for gd in $(seq 0 $((${#GD[@]}-1))); do
 
@@ -588,34 +652,34 @@ EOF2
 
 				echo data/$file | bin/tot >> ${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 				crexp=( ${cr_exp[${file:${args[EL]}:3}]} )
+				echo "icol ${col[@]}" >> ${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 				if [[ "${#crexp[@]}" = "${#col[@]}" ]]; then # no errors in the critical exponents
-					echo "icol ${col[@]}" >> ${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 					echo "${crexp[@]}" >> ${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+				else
+					echo $(for i in $(seq ${#col[@]}); do echo 0; done) >> ${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 				fi
 
 				if [ -f bin/ltot ]; then
-					values="` ( plo <<EOF2
+					values=( ` ( plo <<EOF2
 < "ls lat/$file | bin/ltot
 list N rho gdot kd m alpha zr
 EOF2
-					) | grep -v Plo ` " # number of contacts without rattlers
-					values=( $values )
-					if [[ "${values[-1]}" != "-" ]]; then # the number of contacts is defined
-						values+=("` ( plo <<EOF2
+					) | grep -v Plo ` ) # number of contacts without rattlers
+					values+=( ` ( plo <<EOF2
 < "ls data/$file | bin/tot
-list z? engr
+list z z? engr
 EOF2
-						) | grep -v Plo `")
-						echo ${values[@]} >> ${ZR}/zr_${NU}_KD${K}_M${MA}.out
-						echo ${values[@]} | sed s/' '/','/g >> ${ZR}/zr_${NU}_KD${K}_M${MA}.csv
+					) | grep -v Plo ` )
+					if [[ ( "${values[-3]}" != "-" ) || ( "${values[-4]}" != "-" ) ]]; then # the number of contacts is defined
+						echo ${values[@]} >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
+						echo ${values[@]} | sed s/' '/','/g >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
 					fi
 				else
-					values="` ( plo <<EOF2
+					values=( ` ( plo <<EOF2
 < "ls data/$file | bin/tot
 list N rho gdot kd m alpha z z? engr
 EOF2
-					) | grep -v Plo ` " # number of contacts (with rattlers)
-					values=( $values )
+					) | grep -v Plo ` ) # number of contacts (with rattlers)
 					if [[ "${values[-3]}" != "-" ]]; then # the number of contacts is defined
 						echo ${values[@]} >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
 						echo ${values[@]} | sed s/' '/','/g >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
@@ -674,12 +738,12 @@ EOF2
 			( plo < ${PL}/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
 			echo d >> ${PL}/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
 
-			# zr_phi_*_KD*_M*_GD*.plo or z_phi_*_KD*_M*_GD*.plo
+			# zr_phi_*_KD*_M*_GD*.plo and z_phi_*_KD*_M*_GD*.plo
 
 			if [ -f bin/ltot ]; then
 
 				( cat <<EOF2
-< ${TP}/${ZR}/zr_${NU}_KD${K}_M${MA}.out
+< ${TP}/${ZR}/z_${NU}_KD${K}_M${MA}.out
 
 icol el
 `for el in ${EL[@]}; do echo $el; done`
@@ -687,7 +751,7 @@ icol el
 cal xrho select(rho,gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}&zr>0)
 cal yzr select(zr,gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}&zr>0)
 
-gr 0,,el.n1-1 zr rho -err zrsd -line -sel alpha=el[#]&gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}
+gr 0,,el.n1-1 zr rho -err zsd -line -sel alpha=el[#]&gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}
 gr 0,,el.n1-1 -mark 8000 500+#*600 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]},~ m=%g}\$" m[0]
@@ -705,9 +769,9 @@ EOF2
 				( plo < ${PL}/zr_phi/zr_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
 				echo d >> ${PL}/zr_phi/zr_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
 
-			else
+			fi
 
-				( cat <<EOF2
+			( cat <<EOF2
 < ${TP}/${ZR}/z_${NU}_KD${K}_M${MA}.out
 
 icol el
@@ -730,11 +794,9 @@ ytext \$z\$
 
 latexps ${TP}/${FI}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 EOF2
-				) > ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # contact number plot file
-				( plo < ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
-				echo d >> ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
-
-			fi
+			) > ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # contact number plot file
+			( plo < ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
+			echo d >> ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
 
 		fi
 
