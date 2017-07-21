@@ -22,7 +22,7 @@
 UD=${UPDATE-off} # updating the output files
 NU=${NUMBER-16384} # for simulations with N=NU particles
 
-GZ=${GUESSZC-"[090]=\'7.8 7.9 8 8.1 8.2\' [120]=\'8.5 8.52 8.54 8.56 8.58 8.6\'"} # hash table of guesses of the value of zc
+GZ=${GUESSZC-"[090]=\'7.8 7.9 8 8.1 8.2\' [120]=\'9 9.1 9.2 9.3 9.4\'"} # hash table of guesses of the value of zc
 GP=${GUESSPJ-"[120]=\'0.695 0.7 0.705 0.71 0.715\' [090]=\'0.755 0.76 0.765 0.77 0.775\'"} # hash table of guesses of the value of phij
 
 US=${USER-yketa} # username(s) used for the /pfs user area at HPC2N

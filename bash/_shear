@@ -73,6 +73,7 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	mkdir -p ${PL}/rheo
 	mkdir -p ${PL}/cr_exp
 	mkdir -p ${PL}/orij_phi
+	mkdir -p ${PL}/omegagd_phi
 	mkdir -p ${PL}/z_phi
 	if [ -f bin/ltot ]; then mkdir -p ${PL}/zr_phi; fi
 
@@ -90,7 +91,10 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	mkdir -p ${FI}/cr_exp/beta
 	mkdir -p ${FI}/cr_exp/phij
 	mkdir -p ${FI}/orij_phi
+	mkdir -p ${FI}/orijal_phi
 	mkdir -p ${FI}/orij_phieff
+	mkdir -p ${FI}/orijal_phieff
+	mkdir -p ${FI}/omegagd_phi
 	mkdir -p ${FI}/z_phi
 	if [ -f bin/ltot ]; then mkdir -p ${FI}/zr_phi; fi
 
@@ -711,7 +715,7 @@ icol el
 fig a
 
 gr 0,,el.n1-1 orij rho -line -sel alpha=el[#]
-gr 0,,el.n1-1 -mark 500 500+#*600 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 6500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
 gr el.n1+1 -mark 6500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
@@ -727,10 +731,29 @@ latexps ${TP}/${FI}/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 
 fig b
 
+cal orijal select(orij/alpha,1=1)
+
+gr 0,,el.n1-1 orij/alpha rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (19*orijal.min-orijal.max)/18 (19*orijal.max-orijal.min)/18 lin
+
+xtext \$\phi\$
+ytext \$\mathcal{C}_{ij}/\alpha\$
+
+latexps ${TP}/${FI}/orijal_phi/orijal_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+
+fig c
+
 cal xr rho-c*energy^(-0.5*h/q)
 
 gr 0,,el.n1-1 orij rho-c*energy^(-0.5*h/q) -line -sel alpha=el[#]
-gr 0,,el.n1-1 -mark 500 500+#*600 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 6500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
 gr el.n1+1 -mark 6500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
@@ -742,10 +765,58 @@ xtext \$\phi_{eff}\$
 ytext \$\mathcal{C}_{ij}\$
 
 latexps ${TP}/${FI}/orij_phieff/orij_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+
+fig d
+
+gr 0,,el.n1-1 orij/alpha rho-c*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xr.min-xr.max)/2 (3*xr.max-xr.min)/2 lin
+yl (19*orijal.min-orijal.max)/18 (19*orijal.max-orijal.min)/18 lin
+
+xtext \$\phi_{eff}\$
+ytext \$\mathcal{C}_{ij}/\alpha\$
+
+latexps ${TP}/${FI}/orijal_phieff/orijal_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 EOF2
 			) > ${PL}/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # orientation correlation plot file
 			( plo < ${PL}/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
 			echo d >> ${PL}/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+
+			# omegagd_phi_*_KD*_M*_GD*.plo
+
+			( cat <<EOF2
+< ${TP}/${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+icol el
+`for el in ${EL[@]}; do echo $el; done`
+
+
+fig a
+
+cal omegagd select(omega/gdot,1=1)
+
+gr 0,,el.n1-1 omega/gdot rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (19*omegagd.min-omegagd.max)/18 (19*omegagd.max-omegagd.min)/18 lin
+
+xtext \$\phi\$
+ytext \$\omega/\dot{\gamma}\$
+
+latexps ${TP}/${FI}/omegagd_phi/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+EOF2
+			) > ${PL}/omegagd_phi/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # rotation velocity over shear rate plot file
+			( plo < ${PL}/omegagd_phi/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
+			echo d >> ${PL}/omegagd_phi/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
 
 			# zr_phi_*_KD*_M*_GD*.plo and z_phi_*_KD*_M*_GD*.plo
 
