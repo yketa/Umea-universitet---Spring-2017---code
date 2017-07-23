@@ -1,0 +1,9 @@
+#! /bin/bash
+
+LP=/Users/yketa/Cours/ENS/M1/Stage/Umeå # local path
+
+for dir in notes_plots notes_figs; do # notes plo scripts and figures directories
+	echo "syncing: ${dir}"
+	mkdir -p ${LP}/notes_plots # creates directory on local
+	rsync --quiet --exclude '*~' -avzhe ssh umea_lab:/home/yketa/Desktop/${dir}/ ${LP}/${dir} # copies new files to local
+done
