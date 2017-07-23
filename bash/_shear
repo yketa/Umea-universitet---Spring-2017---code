@@ -72,6 +72,8 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	mkdir -p ${PL}/scale
 	mkdir -p ${PL}/rheo
 	mkdir -p ${PL}/cr_exp
+	mkdir -p ${PL}/ori_gd
+	mkdir -p ${PL}/ori_el
 	mkdir -p ${PL}/orij
 	mkdir -p ${PL}/omegagd_phi
 	mkdir -p ${PL}/z_phi
@@ -90,6 +92,20 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	mkdir -p ${FI}/cr_exp
 	mkdir -p ${FI}/cr_exp/beta
 	mkdir -p ${FI}/cr_exp/phij
+	mkdir -p ${FI}/ori
+	mkdir -p ${FI}/ori/ori_phi
+	mkdir -p ${FI}/ori/ori0_phi
+	mkdir -p ${FI}/ori/ori0al_phi
+	mkdir -p ${FI}/ori/ori0_phieff
+	mkdir -p ${FI}/ori/ori0al_phieff
+	mkdir -p ${FI}/ori/ori1_phi
+	mkdir -p ${FI}/ori/ori1al_phi
+	mkdir -p ${FI}/ori/ori1_phieff
+	mkdir -p ${FI}/ori/ori1al_phieff
+	mkdir -p ${FI}/ori/ori2_phi
+	mkdir -p ${FI}/ori/ori2al_phi
+	mkdir -p ${FI}/ori/ori2_phieff
+	mkdir -p ${FI}/ori/ori2al_phieff
 	mkdir -p ${FI}/orij
 	mkdir -p ${FI}/orij/orij_phi
 	mkdir -p ${FI}/orij/orijal_phi
@@ -147,7 +163,7 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 				fi
 				echo data/$file | bin/tot >> ${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
 			done
-			GD_=($(for gd in ${GD_[@]}; do echo $gd; done | sort)) # sorted shear strain rates
+			GD_=($(for gd in ${GD_[@]}; do echo $gd; done | sort)) # sorted shear strain rates (with Olsson's notation)
 			GD=($(for gd in ${GD_[@]}; do echo ${gd:1:1}.${gd:2:2}${exponents[${gd:0:1}]}; done)) # arrays of the shearing strain rates
 
 			# cr_exp_*_KD*_M*.* (measurements are separed to keep errors in one of the measures from avoiding other measures)
@@ -399,7 +415,7 @@ gr gd.n1 exp(\$a0+x*(\$a1+x*(\$a2+x*(\$a3+x*(\$a4+x*\$a5))))) x -Line
 
 gr gd.n1 -mark 800 800 -text "\${\scriptscriptstyle f(X)=\exp\left(\sum_{i=0}^{5}a_iX^i\right)}\$"
 gr gd.n1+1 -mark 6000 800 -text "\${\scriptstyle \phi_{\scriptscriptstyle J}=%6.4f\pm%6.5f}\$" rhoc[rhoc.n1-1] rhocsd[rhocsd.n1-1]
-gr gd.n1+2 -mark 800 5800 -text "\${\scriptstyle q=%5.3f\pm%5.4f,~ h=%5.3f\pm%5.4f}\$" q[q.n1-1] qsd[qsd.n1-1] h[h.n1-1] hsd[hsd.n1-1]
+gr gd.n1+2 -mark 800 5800 -text "\${\scriptstyle q_p=%5.3f\pm%5.4f,~ h_p=%5.3f\pm%5.4f}\$" q[q.n1-1] qsd[qsd.n1-1] h[h.n1-1] hsd[hsd.n1-1]
 gr gd.n1+3 -mark 800 6300 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alpha=%6.2f}\$" N[0] kd[0] m[0] alpha[0]
 gr gd.n1+4 -mark 800 5300 -text "\${\scriptstyle \chi^2/DOF=%3.2f}\$" chisq[chisq.n1-1]
 
@@ -585,6 +601,53 @@ EOF2
 			( plo < ${PL}/rheo/rheo_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
 			echo d >> ${PL}/rheo/rheo_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
 
+			# ori_phi_*_KD*_M*_GD*_EL*.plo
+
+			for gd in $(seq 0 $((${#GD[@]}-1))); do # per shear rate
+
+				( cat <<EOF2
+< ${TP}/${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+cal gd ${GD[$gd]}
+
+cal xrho select(rho,gdot=gd)
+
+cal ori0gd select(ori0,gdot=gd)
+cal ori1gd select(ori1,gdot=gd)
+cal ori2gd select(ori2,gdot=gd)
+
+icol yorimin
+get ori0gd.min
+get ori1gd.min
+get ori2gd.min
+cal yorimin yorimin.min
+
+icol yorimax
+get ori0gd.max
+get ori1gd.max
+get ori2gd.max
+cal yorimax yorimax.max
+
+gr 0,,2 ori# rho -line -sel gdot=gd
+gr 0,,2 -mark 500 6500-#*500 -text "\${\scriptstyle O_%1.0f}\$" #
+
+gr 3 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+gr 4 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g,~ \alpha=%6.2f}\$" m[0] gd alpha[0]
+
+xl (19*xrho.min-xrho.max)/18 (19*xrho.max-xrho.min)/18 lin
+yl (3*yorimin-yorimax)/2 (3*yorimax-yorimin)/2 lin
+
+xtext \$\phi\$
+ytext \$O_i\$
+
+latexps ${TP}/${FI}/ori/ori_phi/ori_phi_${NU}_KD${K}_M${MA}_GD${GD_[$gd]}_EL${EL[$el]}
+EOF2
+				) > ${PL}/ori_gd/ori_phi_${NU}_KD${K}_M${MA}_GD${GD_[$gd]}_EL${EL[$el]}.plo # orientation plot file
+				( plo < ${PL}/ori_gd/ori_phi_${NU}_KD${K}_M${MA}_GD${GD_[$gd]}_EL${EL[$el]}.plo ) &> /dev/null
+				echo d >> ${PL}/ori_gd/ori_phi_${NU}_KD${K}_M${MA}_GD${GD_[$gd]}_EL${EL[$el]}.plo
+
+			done
+
 		fi
 
 	done
@@ -603,6 +666,8 @@ fig a
 
 gr 0 beta alpha -err betasd -line -sel chisq<4
 
+gr 1 -mark 6000 500 -text "\${\scriptstyle N=%g,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
+
 xtext \$\alpha\$
 ytext \$\beta\$
 
@@ -615,6 +680,8 @@ latexps ${TP}/${FI}/cr_exp/beta/beta_alpha_${NU}_KD${K}_M${MA}
 fig b
 
 gr 0 phij alpha -err phijsd -line -sel chisq<4
+
+gr 1 -mark 6000 500 -text "\${\scriptstyle N=%g,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
 
 xtext \$\alpha\$
 ytext \$\phi_J\$
@@ -632,7 +699,8 @@ EOF2
 
 	printf "\n"
 
-	unset GD; GD=($(for file in ${files[@]}; do echo ${file:${args[GD]}:4}; done | sort)) # array of the shear rates
+	unset GD; GD=($(for file in ${files[@]}; do echo ${file:${args[GD]}:4}; done | sort)) # sorted shear rates (with Olsson's notation)
+	unset GD_; GD_=($(for gd in ${GD[@]}; do echo ${gd:1:1}.${gd:2:2}${exponents[${gd:0:1}]}; done)) # array of the shear rates
 	unset _GD; _GD=() # shear rates which have been already treated
 
 	> ${ZR}/z_${NU}_KD${K}_M${MA}.out # plo data
@@ -654,7 +722,7 @@ EOF2
 			_GD+=(${GD[$gd]}) # we add the current shear rate to the already treated array
 
 			files_GD=($(for file in ${files[@]}; do echo $file | grep GD${GD[$gd]}; done)) # files to treat for the current value of the shear rate
-			echo "Reading from ${#files_GD[@]} files with gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}."
+			echo "Reading from ${#files_GD[@]} files with gdot=${GD_[$gd]}."
 
 			unset EL_; EL_=() # arrays of the aspect ratios (without separator)
 			> ${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]} # output data file
@@ -732,7 +800,7 @@ latexps ${TP}/${FI}/orij/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 
 fig b
 
-cal orijal select(orij/alpha,1=1)
+cal orijal orij/alpha
 
 gr 0,,el.n1-1 orij/alpha rho -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
@@ -799,7 +867,7 @@ icol el
 
 fig a
 
-cal omegagd select(omega/gdot,1=1)
+cal omegagd omega/gdot
 
 gr 0,,el.n1-1 omega/gdot rho -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
@@ -826,16 +894,18 @@ EOF2
 				( cat <<EOF2
 < ${TP}/${ZR}/z_${NU}_KD${K}_M${MA}.out
 
+cal gd ${GD_[$gd]}
+
 icol el
 `for el in ${EL[@]}; do echo $el; done`
 
-cal xrho select(rho,gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}&zr>0)
-cal yzr select(zr,gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}&zr>0)
+cal xrho select(rho,gdot=gd&zr>0)
+cal yzr select(zr,gdot=gd&zr>0)
 
-gr 0,,el.n1-1 zr rho -err zsd -line -sel alpha=el[#]&gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}
+gr 0,,el.n1-1 zr rho -err zsd -line -sel alpha=el[#]&gdot=gd
 gr 0,,el.n1-1 -mark 8000 500+#*600 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
-gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]},~ m=%g}\$" m[0]
+gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gd m[0]
 gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
 
 xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
@@ -855,16 +925,18 @@ EOF2
 			( cat <<EOF2
 < ${TP}/${ZR}/z_${NU}_KD${K}_M${MA}.out
 
+cal gd ${GD_[$gd]}
+
 icol el
 `for el in ${EL[@]}; do echo $el; done`
 
-cal xrho select(rho,gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}&z>0)
-cal yz select(z,gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}&z>0)
+cal xrho select(rho,gdot=gd&z>0)
+cal yz select(z,gdot=gd&z>0)
 
-gr 0,,el.n1-1 z rho -err zsd -line -sel alpha=el[#]&gdot=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]}
+gr 0,,el.n1-1 z rho -err zsd -line -sel alpha=el[#]&gdot=gd
 gr 0,,el.n1-1 -mark 8000 500+#*600 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
-gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=${GD[$gd]:1:1}.${GD[$gd]:2:2}${exponents[${GD[$gd]:0:1}]},~ m=%g}\$" m[0]
+gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gd m[0]
 gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
 
 xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
@@ -878,6 +950,96 @@ EOF2
 			) > ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # contact number plot file
 			( plo < ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
 			echo d >> ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+
+			# ori*_phi_*_KD*_M*_GD*.plo
+
+			for or in $(seq 0 2); do # per direction
+
+				( cat <<EOF2
+< ${TP}/${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+icol el
+`for el in ${EL[@]}; do echo $el; done`
+
+
+fig a
+
+gr 0,,el.n1-1 ori${or} rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+gr el.n1+1 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (5*ori${or}.min-ori${or}.max)/4 (5*ori${or}.max-ori${or}.min)/4 lin
+
+xtext \$\phi\$
+ytext \$O_${or}\$
+
+latexps ${TP}/${FI}/ori/ori${or}_phi/ori${or}_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+
+fig b
+
+cal xrho rho-cg*energy^(-0.5*h/q)
+
+gr 0,,el.n1-1 ori${or} rho-cg*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+gr el.n1+1 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (5*ori${or}.min-ori${or}.max)/4 (5*ori${or}.max-ori${or}.min)/4 lin
+
+xtext \$\phi_{eff}\$
+ytext \$O_${or}\$
+
+latexps ${TP}/${FI}/ori/ori${or}_phieff/ori${or}_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+
+fig c
+
+cal orial ori${or}/alpha
+
+gr 0,,el.n1-1 ori${or}/alpha rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+gr el.n1+1 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (5*orial.min-orial.max)/4 (5*orial.max-orial.min)/4 lin
+
+xtext \$\phi\$
+ytext \$O_${or}/\alpha\$
+
+
+latexps ${TP}/${FI}/ori/ori${or}al_phi/ori${or}al_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+
+fig d
+
+gr 0,,el.n1-1 ori${or}/alpha rho-cg*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+gr el.n1+1 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (5*orial.min-orial.max)/4 (5*orial.max-orial.min)/4 lin
+
+xtext \$\phi_{eff}\$
+ytext \$O_${or}/\alpha\$
+
+
+latexps ${TP}/${FI}/ori/ori${or}al_phieff/ori${or}al_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+EOF2
+				) > ${PL}/ori_el/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # orientation plot file
+				( plo < ${PL}/ori_el/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
+				echo d >> ${PL}/ori_el/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+
+			done
 
 		fi
 
