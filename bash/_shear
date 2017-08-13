@@ -75,6 +75,10 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	mkdir -p ${PL}/ori_gd
 	mkdir -p ${PL}/ori_el
 	mkdir -p ${PL}/orij
+	for dir in prolate oblate; do
+		mkdir -p ${PL}/ori_el/${dir}
+		mkdir -p ${PL}/orij/${dir}
+	done
 	mkdir -p ${PL}/omegagd_phi
 	mkdir -p ${PL}/z_phi
 	if [ -f bin/ltot ]; then mkdir -p ${PL}/zr_phi; fi
@@ -94,23 +98,21 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	mkdir -p ${FI}/cr_exp/phij
 	mkdir -p ${FI}/ori
 	mkdir -p ${FI}/ori/ori_phi
-	mkdir -p ${FI}/ori/ori0_phi
-	mkdir -p ${FI}/ori/ori0al_phi
-	mkdir -p ${FI}/ori/ori0_phieff
-	mkdir -p ${FI}/ori/ori0al_phieff
-	mkdir -p ${FI}/ori/ori1_phi
-	mkdir -p ${FI}/ori/ori1al_phi
-	mkdir -p ${FI}/ori/ori1_phieff
-	mkdir -p ${FI}/ori/ori1al_phieff
-	mkdir -p ${FI}/ori/ori2_phi
-	mkdir -p ${FI}/ori/ori2al_phi
-	mkdir -p ${FI}/ori/ori2_phieff
-	mkdir -p ${FI}/ori/ori2al_phieff
 	mkdir -p ${FI}/orij
-	mkdir -p ${FI}/orij/orij_phi
-	mkdir -p ${FI}/orij/orijal_phi
-	mkdir -p ${FI}/orij/orij_phieff
-	mkdir -p ${FI}/orij/orijal_phieff
+	for dir in prolate oblate; do
+		mkdir -p ${FI}/ori/${dir}
+		for ax in $(seq 0 2); do
+			mkdir -p ${FI}/ori/${dir}/ori${ax}_phi
+			mkdir -p ${FI}/ori/${dir}/ori${ax}al_phi
+			mkdir -p ${FI}/ori/${dir}/ori${ax}_phieff
+			mkdir -p ${FI}/ori/${dir}/ori${ax}al_phieff
+		done
+		mkdir -p ${FI}/orij/${dir}
+		mkdir -p ${FI}/orij/${dir}/orij_phi
+		mkdir -p ${FI}/orij/${dir}/orijal_phi
+		mkdir -p ${FI}/orij/${dir}/orij_phieff
+		mkdir -p ${FI}/orij/${dir}/orijal_phieff
+	done
 	mkdir -p ${FI}/omegagd_phi
 	mkdir -p ${FI}/z_phi
 	if [ -f bin/ltot ]; then mkdir -p ${FI}/zr_phi; fi
@@ -772,41 +774,55 @@ EOF2
 			EL_=($(for el in ${EL_[@]}; do echo $el; done | sort)) # sorted aspect ratios
 			unset EL; EL=($(for el in ${EL_[@]}; do echo ${el:0:1}.${el:1:2}; done)) # arrays of the aspect ratios
 
-			# orij_phi_*_KD*_M*_GD*.plo
+			# orij_phi_*_KD*_M*_GD*_prolate.plo
 
 			( cat <<EOF2
 < ${TP}/${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 
 icol el
-`for el in ${EL[@]}; do echo $el; done`
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
+
+`_plo_peak orij rho el alpha`
 
 
 fig a
 
+cal yorij select(orij,alpha>1)
+
 gr 0,,el.n1-1 orij rho -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
-gr el.n1 -mark 6500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
-gr el.n1+1 -mark 6500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+icol yy
+for i 1000*(19*yorij.min-yorij.max)/18 1000*(19*yorij.max-yorij.min)/18 get i/1000
+gr el.n1 yy peak -Dash
+gr el.n1 -mark 7300 6500 -text "\${\scriptstyle \phi=%2.3f}\$" peak
+
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+2 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
 
 xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
-yl (19*orij.min-orij.max)/18 (19*orij.max-orij.min)/18 lin
+yl (19*yorij.min-yorij.max)/18 (19*yorij.max-yorij.min)/18 lin
 
 xtext \$\phi\$
 ytext \$\mathcal{C}_{ij}\$
 
-latexps ${TP}/${FI}/orij/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+latexps ${TP}/${FI}/orij/prolate/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
 
 
 fig b
 
-cal orijal orij/alpha
+cal orijal select(orij/alpha,alpha>1)
 
 gr 0,,el.n1-1 orij/alpha rho -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
-gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
-gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+icol yyy
+for i 1000*(19*orijal.min-orijal.max)/18 1000*(19*orijal.max-orijal.min)/18 get i/1000
+gr el.n1 yyy peak -Dash
+gr el.n1 -mark 7300 6500 -text "\${\scriptstyle \phi=%2.3f}\$" peak
+
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+2 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
 
 xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
 yl (19*orijal.min-orijal.max)/18 (19*orijal.max-orijal.min)/18 lin
@@ -814,7 +830,7 @@ yl (19*orijal.min-orijal.max)/18 (19*orijal.max-orijal.min)/18 lin
 xtext \$\phi\$
 ytext \$\mathcal{C}_{ij}/\alpha\$
 
-latexps ${TP}/${FI}/orij/orijal_phi/orijal_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+latexps ${TP}/${FI}/orij/prolate/orijal_phi/orijal_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
 
 
 fig c
@@ -828,12 +844,12 @@ gr el.n1 -mark 6500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[
 gr el.n1+1 -mark 6500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
 
 xl (3*xr.min-xr.max)/2 (3*xr.max-xr.min)/2 lin
-yl (19*orij.min-orij.max)/18 (19*orij.max-orij.min)/18 lin
+yl (19*yorij.min-yorij.max)/18 (19*yorij.max-yorij.min)/18 lin
 
 xtext \$\phi_{eff}\$
 ytext \$\mathcal{C}_{ij}\$
 
-latexps ${TP}/${FI}/orij/orij_phieff/orij_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+latexps ${TP}/${FI}/orij/prolate/orij_phieff/orij_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
 
 
 fig d
@@ -850,11 +866,97 @@ yl (19*orijal.min-orijal.max)/18 (19*orijal.max-orijal.min)/18 lin
 xtext \$\phi_{eff}\$
 ytext \$\mathcal{C}_{ij}/\alpha\$
 
-latexps ${TP}/${FI}/orij/orijal_phieff/orijal_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+latexps ${TP}/${FI}/orij/prolate/orijal_phieff/orijal_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
 EOF2
-			) > ${PL}/orij/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # orientation correlation plot file
-			( plo < ${PL}/orij/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
-			echo d >> ${PL}/orij/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+			) > ${PL}/orij/prolate/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # orientation correlation plot file
+			( plo < ${PL}/orij/prolate/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
+			echo d >> ${PL}/orij/prolate/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
+
+			# orij_phi_*_KD*_M*_GD*_oblate.plo
+
+			( cat <<EOF2
+< ${TP}/${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
+
+
+fig a
+
+cal yorij select(orij,alpha<1)
+
+gr 0,,el.n1-1 orij rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 6500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 6500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (19*yorij.min-yorij.max)/18 (19*yorij.max-yorij.min)/18 lin
+
+xtext \$\phi\$
+ytext \$\mathcal{C}_{ij}\$
+
+latexps ${TP}/${FI}/orij/oblate/orij_phi/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+
+
+fig b
+
+cal orijal select(orij/alpha,alpha<1)
+
+gr 0,,el.n1-1 orij/alpha rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (19*orijal.min-orijal.max)/18 (19*orijal.max-orijal.min)/18 lin
+
+xtext \$\phi\$
+ytext \$\mathcal{C}_{ij}/\alpha\$
+
+latexps ${TP}/${FI}/orij/oblate/orijal_phi/orijal_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+
+
+fig c
+
+cal xr rho-c*energy^(-0.5*h/q)
+
+gr 0,,el.n1-1 orij rho-c*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 6500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 6500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xr.min-xr.max)/2 (3*xr.max-xr.min)/2 lin
+yl (19*yorij.min-yorij.max)/18 (19*yorij.max-yorij.min)/18 lin
+
+xtext \$\phi_{eff}\$
+ytext \$\mathcal{C}_{ij}\$
+
+latexps ${TP}/${FI}/orij/oblate/orij_phieff/orij_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+
+
+fig d
+
+gr 0,,el.n1-1 orij/alpha rho-c*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xr.min-xr.max)/2 (3*xr.max-xr.min)/2 lin
+yl (19*orijal.min-orijal.max)/18 (19*orijal.max-orijal.min)/18 lin
+
+xtext \$\phi_{eff}\$
+ytext \$\mathcal{C}_{ij}/\alpha\$
+
+latexps ${TP}/${FI}/orij/oblate/orijal_phieff/orijal_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+EOF2
+			) > ${PL}/orij/oblate/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # orientation correlation plot file
+			( plo < ${PL}/orij/oblate/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
+			echo d >> ${PL}/orij/oblate/orij_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
 
 			# omegagd_phi_*_KD*_M*_GD*.plo
 
@@ -951,7 +1053,7 @@ EOF2
 			( plo < ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
 			echo d >> ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
 
-			# ori*_phi_*_KD*_M*_GD*.plo
+			# ori*_phi_*_KD*_M*_GD*_prolate.plo
 
 			for or in $(seq 0 2); do # per direction
 
@@ -959,27 +1061,63 @@ EOF2
 < ${TP}/${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 
 icol el
-`for el in ${EL[@]}; do echo $el; done`
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
+
+cal ori${or}sgn $(((-1)**$((0!=$or))))*ori${or}
+
+`_plo_peak ori${or}sgn rho el alpha`
 
 
 fig a
 
-gr 0,,el.n1-1 ori${or} rho -line -sel alpha=el[#]
-gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+cal yori${or} select(ori${or},alpha>1)
 
-gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
-gr el.n1+1 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
+gr 0,,el.n1-1 ori${or} rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+icol yy
+for i 1000*(5*yori${or}.min-yori${or}.max)/4 1000*(5*yori${or}.max-yori${or}.min)/4 get i/1000
+gr el.n1 yy peak -Dash
+gr el.n1 -mark 7300 6500 -text "\${\scriptstyle \phi=%2.3f}\$" peak
+
+gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+gr el.n1+2 -mark 500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
 
 xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
-yl (5*ori${or}.min-ori${or}.max)/4 (5*ori${or}.max-ori${or}.min)/4 lin
+yl (5*yori${or}.min-yori${or}.max)/4 (5*yori${or}.max-yori${or}.min)/4 lin
 
 xtext \$\phi\$
 ytext \$O_${or}\$
 
-latexps ${TP}/${FI}/ori/ori${or}_phi/ori${or}_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+latexps ${TP}/${FI}/ori/prolate/ori${or}_phi/ori${or}_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
 
 
 fig b
+
+cal orial select(ori${or}/alpha,alpha>1)
+
+gr 0,,el.n1-1 ori${or}/alpha rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+icol yyy
+for i 1000*(5*orial.min-orial.max)/4 1000*(5*orial.max-orial.min)/4 get i/1000
+gr el.n1 yyy peak -Dash
+gr el.n1 -mark 7300 6500 -text "\${\scriptstyle \phi=%2.3f}\$" peak
+
+gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+gr el.n1+2 -mark 500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (5*orial.min-orial.max)/4 (5*orial.max-orial.min)/4 lin
+
+xtext \$\phi\$
+ytext \$O_${or}/\alpha\$
+
+
+latexps ${TP}/${FI}/ori/prolate/ori${or}al_phi/ori${or}al_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
+
+
+fig c
 
 cal xrho rho-cg*energy^(-0.5*h/q)
 
@@ -990,32 +1128,12 @@ gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
 gr el.n1+1 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
 
 xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
-yl (5*ori${or}.min-ori${or}.max)/4 (5*ori${or}.max-ori${or}.min)/4 lin
+yl (5*yori${or}.min-yori${or}.max)/4 (5*yori${or}.max-yori${or}.min)/4 lin
 
 xtext \$\phi_{eff}\$
 ytext \$O_${or}\$
 
-latexps ${TP}/${FI}/ori/ori${or}_phieff/ori${or}_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
-
-
-fig c
-
-cal orial ori${or}/alpha
-
-gr 0,,el.n1-1 ori${or}/alpha rho -line -sel alpha=el[#]
-gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
-
-gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
-gr el.n1+1 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
-
-xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
-yl (5*orial.min-orial.max)/4 (5*orial.max-orial.min)/4 lin
-
-xtext \$\phi\$
-ytext \$O_${or}/\alpha\$
-
-
-latexps ${TP}/${FI}/ori/ori${or}al_phi/ori${or}al_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+latexps ${TP}/${FI}/ori/prolate/ori${or}_phieff/ori${or}_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
 
 
 fig d
@@ -1033,11 +1151,103 @@ xtext \$\phi_{eff}\$
 ytext \$O_${or}/\alpha\$
 
 
-latexps ${TP}/${FI}/ori/ori${or}al_phieff/ori${or}al_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+latexps ${TP}/${FI}/ori/prolate/ori${or}al_phieff/ori${or}al_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
 EOF2
-				) > ${PL}/ori_el/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # orientation plot file
-				( plo < ${PL}/ori_el/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
-				echo d >> ${PL}/ori_el/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+				) > ${PL}/ori_el/prolate/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # orientation plot file
+				( plo < ${PL}/ori_el/prolate/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
+				echo d >> ${PL}/ori_el/prolate/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
+
+			done
+
+			# ori*_phi_*_KD*_M*_GD*_oblate.plo
+
+			for or in $(seq 0 2); do # per direction
+
+				( cat <<EOF2
+< ${TP}/${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
+
+
+fig a
+
+cal yori${or} select(ori${or},alpha<1)
+
+gr 0,,el.n1-1 ori${or} rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+gr el.n1+1 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (5*yori${or}.min-yori${or}.max)/4 (5*yori${or}.max-yori${or}.min)/4 lin
+
+xtext \$\phi\$
+ytext \$O_${or}\$
+
+latexps ${TP}/${FI}/ori/oblate/ori${or}_phi/ori${or}_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+
+
+fig b
+
+cal orial select(ori${or}/alpha,alpha<1)
+
+gr 0,,el.n1-1 ori${or}/alpha rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+gr el.n1+1 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (5*orial.min-orial.max)/4 (5*orial.max-orial.min)/4 lin
+
+xtext \$\phi\$
+ytext \$O_${or}/\alpha\$
+
+
+latexps ${TP}/${FI}/ori/oblate/ori${or}al_phi/ori${or}al_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+
+
+fig c
+
+cal xrho rho-cg*energy^(-0.5*h/q)
+
+gr 0,,el.n1-1 ori${or} rho-cg*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+gr el.n1+1 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (5*yori${or}.min-yori${or}.max)/4 (5*yori${or}.max-yori${or}.min)/4 lin
+
+xtext \$\phi_{eff}\$
+ytext \$O_${or}\$
+
+latexps ${TP}/${FI}/ori/oblate/ori${or}_phieff/ori${or}_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+
+
+fig d
+
+gr 0,,el.n1-1 ori${or}/alpha rho-cg*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+gr el.n1+1 -mark 5500 6000 -text "\${\scriptstyle m=%g,~ \dot{\gamma}=%g}\$" m[0] gdot[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (5*orial.min-orial.max)/4 (5*orial.max-orial.min)/4 lin
+
+xtext \$\phi_{eff}\$
+ytext \$O_${or}/\alpha\$
+
+
+latexps ${TP}/${FI}/ori/oblate/ori${or}al_phieff/ori${or}al_phieff_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+EOF2
+				) > ${PL}/ori_el/oblate/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # orientation plot file
+				( plo < ${PL}/ori_el/oblate/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
+				echo d >> ${PL}/ori_el/oblate/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
 
 			done
 

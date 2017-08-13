@@ -1,0 +1,49 @@
+#! /bin/bash
+
+# Plo script which is adapted with input parameters.
+
+# Returns the mean position of a peak in a variable y
+# as a function of x for different values e of the variable
+# v. The mean position is calculated by excluding the values
+# too far from the total mean (confidence interval at 99.7%)
+# and those corresponding to extermums of x for the corresponding
+# value of v.
+
+y=$1 # peak in y...
+x=$2 # ...as a function of x...
+e=$3 # ...for different values e...
+v=$4 # ...corresponding to the variable v
+
+cat <<EOF
+# determination of the positions of the peaks
+for value 0 ${e}.n1-1
+cal yvalue select(${y},${v}=${e}[value])
+cal xvalue select(${x},${v}=${e}[value])
+icol ypeak
+get yvalue.max
+cal peak select(${x},${v}=${e}[value]&${y}=ypeak[value])
+icol xpeak
+if peak[0]>0&peak[0]!=xvalue.min&peak[0]!=xvalue.max get peak[0]
+end
+
+# calculation of the mean and the confidence interval
+cal sumpeak 0
+cal sumsqpeak 0
+cal lenpeak 0
+for i 0 xpeak.n1-1
+cal sumpeak sumpeak+xpeak[i]
+cal sumsqpeak sumsqpeak+xpeak[i]^2
+cal lenpeak lenpeak+1
+end
+cal meanpeak sumpeak/lenpeak
+cal devpeak 3*sqrt((sumsqpeak/lenpeak-meanpeak^2)/lenpeak)
+
+# calculation of the final mean ("peak")
+cal peak 0
+cal lenpeak 0
+for i 0 xpeak.n1-1
+if abs(xpeak[i]-meanpeak)<=devpeak cal peak peak+xpeak[i]
+if abs(xpeak[i]-meanpeak)<=devpeak cal lenpeak lenpeak+1
+end
+cal peak peak/lenpeak
+EOF

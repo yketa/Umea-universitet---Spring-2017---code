@@ -408,17 +408,18 @@ cal phij $pj
 cal phi select(rho,tau>1e3&zr>0)
 cal ytau select(tau,tau>1e3&zr>0)
 
-gr 0,,gd.n1-1 tau phij-rho -line -sel gdot=gd[#]&tau>1e3&zr>0
+gr 0,,gd.n1-1 tau phij-rho -sel gdot=gd[#]&tau>1e3&zr>0
 gr 0,,gd.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
 
-icol a0 a1
+icol a0 a1 chisq a0sd a1sd
 get linreg(ln(tau),ln(phij-rho),tau>1e3&zr>0)
 cal beta 0-a1[0]
+cal betasd a1sd[0]/(a1[0]^2)
 
 icol x
 for i 0 100 get exp(ln(phij-phi.min)+i*(ln(phij-phi.max)-ln(phij-phi.min))/100)
 gr gd.n1 exp(a0[0]+a1[0]*ln(x)) x -Line
-gr gd.n1 -mark 7000 6500 -text "\${\scriptstyle \beta=%g}\$" beta
+gr gd.n1 -mark 7000 6500 -text "\${\scriptstyle \beta=%g\pm%g}\$" beta betasd
 
 gr gd.n1+1 -mark 500 500 -text "\${\scriptstyle \alpha=%6.2f}\$" alpha[0]
 gr gd.n1+2 -mark 500 1000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
