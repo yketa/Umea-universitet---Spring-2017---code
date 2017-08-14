@@ -164,6 +164,15 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 					GD_+=(${file:${args[GD]}:4})
 				fi
 				echo data/$file | bin/tot >> ${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
+				for or in j $(seq 0 2); do
+					mean_stdev=( `( plo <<EOF2
+< data/$file | bin/ttime
+
+< "_plo_mean_stdev ori${or}
+list mean stdev
+EOF2
+					) | grep -v Plo` ) # mean and standard deviation of orientation-related variables
+				done
 			done
 			GD_=($(for gd in ${GD_[@]}; do echo $gd; done | sort)) # sorted shear strain rates (with Olsson's notation)
 			GD=($(for gd in ${GD_[@]}; do echo ${gd:1:1}.${gd:2:2}${exponents[${gd:0:1}]}; done)) # arrays of the shearing strain rates
