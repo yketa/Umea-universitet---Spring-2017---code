@@ -69,7 +69,8 @@ massif: dir $(OBJ)
 #### SAVE ####
 
 source:
-	@tar --exclude='.tar.gz' -zcf source_$$(date +%d-%m-%Y_%H-%M-%S).tar.gz ../$(notdir $(shell pwd)) &> /dev/null
+	@tar --exclude='.tar.gz' -zcf $(HOME)/source_$$(date +%d-%m-%Y_%H-%M-%S).tar.gz ../$(notdir $(shell pwd)) &> /dev/null
+	@echo "Saved in home directory."
 
 #### CLEAN ####
 
