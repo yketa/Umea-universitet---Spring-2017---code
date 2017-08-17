@@ -75,11 +75,14 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	mkdir -p ${PL}/ori_gd
 	mkdir -p ${PL}/ori_el
 	mkdir -p ${PL}/orij
+	mkdir -p ${PL}/omegagd_gd
+	mkdir -p ${PL}/omegagd_el
+	mkdir -p ${PL}/omegagd_el/omegagd_phi
 	for dir in prolate oblate; do
 		mkdir -p ${PL}/ori_el/${dir}
 		mkdir -p ${PL}/orij/${dir}
+		mkdir -p ${PL}/omegagd_el/${dir}
 	done
-	mkdir -p ${PL}/omegagd_phi
 	mkdir -p ${PL}/z_phi
 	if [ -f bin/ltot ]; then mkdir -p ${PL}/zr_phi; fi
 
@@ -99,6 +102,9 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	mkdir -p ${FI}/ori
 	mkdir -p ${FI}/ori/ori_phi
 	mkdir -p ${FI}/orij
+	mkdir -p ${FI}/omegagd
+	mkdir -p ${FI}/omegagd/omegagd_phi_gd
+	mkdir -p ${FI}/omegagd/omegagd_phi_el
 	for dir in prolate oblate; do
 		mkdir -p ${FI}/ori/${dir}
 		for ax in $(seq 0 2); do
@@ -112,8 +118,8 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 		mkdir -p ${FI}/orij/${dir}/orijal_phi
 		mkdir -p ${FI}/orij/${dir}/orij_phieff
 		mkdir -p ${FI}/orij/${dir}/orijal_phieff
+		mkdir -p ${FI}/omegagd/${dir}
 	done
-	mkdir -p ${FI}/omegagd_phi
 	mkdir -p ${FI}/z_phi
 	if [ -f bin/ltot ]; then mkdir -p ${FI}/zr_phi; fi
 
@@ -630,6 +636,9 @@ get ori1gd.max
 get ori2gd.max
 cal yorimax yorimax.max
 
+
+fig a
+
 gr 0,,2 ori# rho -line -sel gdot=gd
 gr 0,,2 -mark 500 6500-#*500 -text "\${\scriptstyle O_%1.0f}\$" #
 
@@ -649,6 +658,37 @@ EOF2
 				echo d >> ${PL}/ori_gd/ori_phi_${NU}_KD${K}_M${MA}_GD${GD_[$gd]}_EL${EL[$el]}.plo
 
 			done
+
+			# omegagd_phi_*_KD*_M*_EL*.plo
+
+			( cat <<EOF2
+< ${TP}/${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+icol gd
+`for gd in ${GD[@]}; do echo $gd; done`
+
+
+fig a
+
+cal omegagd omega/gdot
+
+gr 0,,gd.n1-1 omega/gdot rho -line -sel gdot=gd[#]
+gr 0,,gd.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
+
+gr gd.n1 -mark 500 6500 -text "\${\scriptstyle \alpha=%1.2f,~ m=%g}\$" alpha[0] m[0]
+gr gd.n1+1 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (19*omegagd.min-omegagd.max)/18 (19*omegagd.max-omegagd.min)/18 lin
+
+xtext \$\phi\$
+ytext \$\omega/\dot{\gamma}\$
+
+latexps ${TP}/${FI}/omegagd/omegagd_phi_gd/omegagd_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+EOF2
+			) > ${PL}/omegagd_gd/omegagd_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo # rotation velocity over shear rate plot file
+			( plo < ${PL}/omegagd_gd/omegagd_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
+			echo d >> ${PL}/omegagd_gd/omegagd_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
 
 		fi
 
@@ -995,11 +1035,73 @@ yl (19*omegagd.min-omegagd.max)/18 (19*omegagd.max-omegagd.min)/18 lin
 xtext \$\phi\$
 ytext \$\omega/\dot{\gamma}\$
 
-latexps ${TP}/${FI}/omegagd_phi/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+latexps ${TP}/${FI}/omegagd/omegagd_phi_el/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 EOF2
-			) > ${PL}/omegagd_phi/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # rotation velocity over shear rate plot file
-			( plo < ${PL}/omegagd_phi/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
-			echo d >> ${PL}/omegagd_phi/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+			) > ${PL}/omegagd_el/omegagd_phi/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # rotation velocity over shear rate plot file
+			( plo < ${PL}/omegagd_el/omegagd_phi/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
+			echo d >> ${PL}/omegagd_el/omegagd_phi/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+
+			# omegagd_phi_*_KD*_M*_GD*_prolate.plo
+
+			( cat <<EOF2
+< ${TP}/${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
+
+
+fig a
+
+cal omegagd select(omega/gdot,alpha>1)
+
+gr 0,,el.n1-1 omega/gdot rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (19*omegagd.min-omegagd.max)/18 (19*omegagd.max-omegagd.min)/18 lin
+
+xtext \$\phi\$
+ytext \$\omega/\dot{\gamma}\$
+
+latexps ${TP}/${FI}/omegagd/prolate/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
+EOF2
+			) > ${PL}/omegagd_el/prolate/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # rotation velocity over shear rate plot file
+			( plo < ${PL}/omegagd_el/prolate/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
+			echo d >> ${PL}/omegagd_el/prolate/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
+
+			# omegagd_phi_*_KD*_M*_GD*_oblate.plo
+
+			( cat <<EOF2
+< ${TP}/${OU}/${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
+
+
+fig a
+
+cal omegagd select(omega/gdot,alpha<1)
+
+gr 0,,el.n1-1 omega/gdot rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (19*omegagd.min-omegagd.max)/18 (19*omegagd.max-omegagd.min)/18 lin
+
+xtext \$\phi\$
+ytext \$\omega/\dot{\gamma}\$
+
+latexps ${TP}/${FI}/omegagd/oblate/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+EOF2
+			) > ${PL}/omegagd_el/oblate/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # rotation velocity over shear rate plot file
+			( plo < ${PL}/omegagd_el/oblate/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
+			echo d >> ${PL}/omegagd_el/oblate/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
 
 			# zr_phi_*_KD*_M*_GD*.plo and z_phi_*_KD*_M*_GD*.plo
 
