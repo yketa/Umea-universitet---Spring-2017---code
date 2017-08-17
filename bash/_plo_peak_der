@@ -4,15 +4,16 @@
 
 # Returns the mean position of a peak in the derivative of the variable y
 # as a function of x for different values e of the variable
-# v. The mean position is calculated by excluding the values
-# too far from the total mean (confidence interval at 99.7%)
+# v if condition c is satisfied. The mean position is calculated by excluding
+# the values too far from the total mean (confidence interval at 99.7%)
 # and those corresponding to extermums of x for the corresponding
 # value of v.
 
 y=$1 # peak in the derivative of y...
 x=$2 # ...as a function of x...
 e=$3 # ...for different values e...
-v=$4 # ...corresponding to the variable v
+v=$4 # ...corresponding to the variable v...
+c=${5-1=1} # ...if condition c is satisfied
 
 cat <<EOF
 # determination of the positions of the peaks
@@ -32,7 +33,7 @@ end
 end
 end
 icol xpeak
-if peak[0]>0&peak[0]!=xvalue.min&peak[0]!=xvalue.max get peak
+if peak[0]>0&peak[0]!=xvalue.min&peak[0]!=xvalue.max&${c} get peak
 end
 
 # calculation of the mean and the confidence interval (using standard deviation)
