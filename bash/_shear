@@ -672,7 +672,7 @@ fig a
 
 cal omegagd omega/gdot
 
-gr 0,,gd.n1-1 omega/gdot rho -line -sel gdot=gd[#]
+gr 0,,gd.n1-1 omega/gdot rho -err omega?/gdot -line -sel gdot=gd[#]
 gr 0,,gd.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
 
 gr gd.n1 -mark 500 6500 -text "\${\scriptstyle \alpha=%1.2f,~ m=%g}\$" alpha[0] m[0]
@@ -841,7 +841,7 @@ fig a
 
 cal yorij select(orij,alpha>1)
 
-gr 0,,el.n1-1 orij rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 orij rho -err orijsd -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 icol yy
@@ -865,7 +865,7 @@ fig b
 
 cal orijal select(orij/alpha,alpha>1)
 
-gr 0,,el.n1-1 orij/alpha rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 orij/alpha rho -err orijsd/alpha -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 icol yyy
@@ -889,7 +889,7 @@ fig c
 
 cal xr rho-c*energy^(-0.5*h/q)
 
-gr 0,,el.n1-1 orij rho-c*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 orij rho-c*energy^(-0.5*h/q) -err orijsd -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 6500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
@@ -906,7 +906,7 @@ latexps ${TP}/${FI}/orij/prolate/orij_phieff/orij_phieff_${NU}_KD${K}_M${MA}_GD$
 
 fig d
 
-gr 0,,el.n1-1 orij/alpha rho-c*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 orij/alpha rho-c*energy^(-0.5*h/q) -err orijsd/alpha -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
@@ -937,7 +937,7 @@ fig a
 
 cal yorij select(orij,alpha<1)
 
-gr 0,,el.n1-1 orij rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 orij rho -err orijsd -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 6500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
@@ -956,7 +956,7 @@ fig b
 
 cal orijal select(orij/alpha,alpha<1)
 
-gr 0,,el.n1-1 orij/alpha rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 orij/alpha rho -err orijsd/alpha -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
@@ -975,7 +975,7 @@ fig c
 
 cal xr rho-c*energy^(-0.5*h/q)
 
-gr 0,,el.n1-1 orij rho-c*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 orij rho-c*energy^(-0.5*h/q) -err orijsd -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 6500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
@@ -992,7 +992,7 @@ latexps ${TP}/${FI}/orij/oblate/orij_phieff/orij_phieff_${NU}_KD${K}_M${MA}_GD${
 
 fig d
 
-gr 0,,el.n1-1 orij/alpha rho-c*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 orij/alpha rho-c*energy^(-0.5*h/q) -err orijsd/alpha -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
@@ -1023,7 +1023,7 @@ fig a
 
 cal omegagd omega/gdot
 
-gr 0,,el.n1-1 omega/gdot rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 omega/gdot rho -err omega?/gdot -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
@@ -1056,7 +1056,7 @@ fig a
 
 cal omegagd select(omega/gdot,alpha>1)
 
-gr 0,,el.n1-1 omega/gdot rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 omega/gdot rho -err omega?/gdot -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 icol yy
@@ -1092,7 +1092,7 @@ fig a
 
 cal omegagd select(omega/gdot,alpha<1)
 
-gr 0,,el.n1-1 omega/gdot rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 omega/gdot rho -err omega?/gdot -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
@@ -1195,7 +1195,7 @@ fig a
 
 cal yori${or} select(ori${or},alpha>1)
 
-gr 0,,el.n1-1 ori${or} rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 ori${or} rho -err ori${or}sd -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 icol yy
@@ -1219,7 +1219,7 @@ fig b
 
 cal orial select(ori${or}/alpha,alpha>1)
 
-gr 0,,el.n1-1 ori${or}/alpha rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 ori${or}/alpha rho -err ori${or}sd/alpha -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 icol yyy
@@ -1244,7 +1244,7 @@ fig c
 
 cal xrho rho-cg*energy^(-0.5*h/q)
 
-gr 0,,el.n1-1 ori${or} rho-cg*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 ori${or} rho-cg*energy^(-0.5*h/q) -err ori${or}sd -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
@@ -1261,7 +1261,7 @@ latexps ${TP}/${FI}/ori/prolate/ori${or}_phieff/ori${or}_phieff_${NU}_KD${K}_M${
 
 fig d
 
-gr 0,,el.n1-1 ori${or}/alpha rho-cg*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 ori${or}/alpha rho-cg*energy^(-0.5*h/q) -err ori${or}sd/alpha -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
@@ -1297,7 +1297,7 @@ fig a
 
 cal yori${or} select(ori${or},alpha<1)
 
-gr 0,,el.n1-1 ori${or} rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 ori${or} rho -err ori${or}sd -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
@@ -1316,7 +1316,7 @@ fig b
 
 cal orial select(ori${or}/alpha,alpha<1)
 
-gr 0,,el.n1-1 ori${or}/alpha rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 ori${or}/alpha rho -err ori${or}sd/alpha -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
@@ -1336,7 +1336,7 @@ fig c
 
 cal xrho rho-cg*energy^(-0.5*h/q)
 
-gr 0,,el.n1-1 ori${or} rho-cg*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 ori${or} rho-cg*energy^(-0.5*h/q) -err ori${or}sd -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
@@ -1353,7 +1353,7 @@ latexps ${TP}/${FI}/ori/oblate/ori${or}_phieff/ori${or}_phieff_${NU}_KD${K}_M${M
 
 fig d
 
-gr 0,,el.n1-1 ori${or}/alpha rho-cg*energy^(-0.5*h/q) -line -sel alpha=el[#]
+gr 0,,el.n1-1 ori${or}/alpha rho-cg*energy^(-0.5*h/q) -err ori${or}sd/alpha -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 6500-#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 gr el.n1 -mark 5500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
