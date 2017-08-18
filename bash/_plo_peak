@@ -19,13 +19,13 @@ cat <<EOF
 # determination of the positions of the peaks
 
 for value 0 ${e}.n1-1
-cal yvalue select(${y},${v}=${e}[value])
-cal xvalue select(${x},${v}=${e}[value])
+cal yvalue select(${y},${v}=${e}[value]&${c})
+cal xvalue select(${x},${v}=${e}[value]&${c})
 icol ypeak
 get yvalue.max
 cal peak select(${x},${v}=${e}[value]&${y}=ypeak[value])
 icol xpeak
-if peak[0]>0&peak[0]!=xvalue.min&peak[0]!=xvalue.max&${c} get peak[0]
+if peak[0]>0&peak[0]!=xvalue.min&peak[0]!=xvalue.max get peak[0]
 end
 
 # calculation of the mean and the confidence interval (using standard deviation)
