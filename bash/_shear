@@ -1049,6 +1049,8 @@ EOF2
 icol el
 `for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
 
+`_plo_peak omega/gdot rho el alpha "rho<0.6&gdot=${GD_[$gd]}"`
+
 
 fig a
 
@@ -1057,8 +1059,13 @@ cal omegagd select(omega/gdot,alpha>1)
 gr 0,,el.n1-1 omega/gdot rho -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
-gr el.n1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
-gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+icol yy
+for i 1000*(19*omegagd.min-omegagd.max)/18 1000*(19*omegagd.max-omegagd.min)/18 get i/1000
+gr el.n1 yy peak -Dash
+gr el.n1 -mark 7800 6500 -text "\${\scriptstyle \phi=%2.3f}\$" peak
+
+gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+2 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
 
 xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
 yl (19*omegagd.min-omegagd.max)/18 (19*omegagd.max-omegagd.min)/18 lin
@@ -1103,7 +1110,7 @@ EOF2
 			( plo < ${PL}/omegagd_el/oblate/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
 			echo d >> ${PL}/omegagd_el/oblate/omegagd_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
 
-			# zr_phi_*_KD*_M*_GD*.plo and z_phi_*_KD*_M*_GD*.plo
+			# zr_phi_*_KD*_M*_GD*.plo
 
 			if [ -f bin/ltot ]; then
 
@@ -1137,6 +1144,8 @@ EOF2
 				echo d >> ${PL}/zr_phi/zr_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
 
 			fi
+
+			# z_phi_*_KD*_M*_GD*.plo
 
 			( cat <<EOF2
 < ${TP}/${ZR}/z_${NU}_KD${K}_M${MA}.out
