@@ -83,7 +83,10 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 		mkdir -p ${PL}/orij/${dir}
 		mkdir -p ${PL}/omegagd_el/${dir}
 	done
-	mkdir -p ${PL}/z_phi
+	mkdir -p ${PL}/z
+	mkdir -p ${PL}/z/z_phi
+	mkdir -p ${PL}/z/prolate
+	mkdir -p ${PL}/z/oblate
 	if [ -f bin/ltot ]; then mkdir -p ${PL}/zr_phi; fi
 
 	mkdir -p $FI
@@ -120,7 +123,10 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 		mkdir -p ${FI}/orij/${dir}/orijal_phieff
 		mkdir -p ${FI}/omegagd/${dir}
 	done
-	mkdir -p ${FI}/z_phi
+	mkdir -p ${FI}/z
+	mkdir -p ${FI}/z/z_phi
+	mkdir -p ${FI}/z/prolate
+	mkdir -p ${FI}/z/oblate
 	if [ -f bin/ltot ]; then mkdir -p ${FI}/zr_phi; fi
 
 	printf "\n"
@@ -1170,11 +1176,81 @@ yl (19*yz.min-yz.max)/18 (19*yz.max-yz.min)/18 lin
 xtext \$\phi\$
 ytext \$z\$
 
-latexps ${TP}/${FI}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
+latexps ${TP}/${FI}/z/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}
 EOF2
-			) > ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # contact number plot file
-			( plo < ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
-			echo d >> ${PL}/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+			) > ${PL}/z/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo # contact number plot file
+			( plo < ${PL}/z/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo ) &> /dev/null
+			echo d >> ${PL}/z/z_phi/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}.plo
+
+			# z_phi_*_KD*_M*_GD*_prolate.plo
+
+			( cat <<EOF2
+< ${TP}/${ZR}/z_${NU}_KD${K}_M${MA}.out
+
+cal gd ${GD_[$gd]}
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
+
+`_plo_peak_der z rho el alpha "rho<0.6&gdot=gd"`
+
+
+cal xrho select(rho,gdot=gd&z>0)
+cal yz select(z,gdot=gd&z>0)
+
+gr 0,,el.n1-1 z rho -err zsd -line -sel alpha=el[#]&gdot=gd
+gr 0,,el.n1-1 -mark 8000 500+#*600 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+icol yy
+for i 100*(19*yz.min-yz.max)/18 100*(19*yz.max-yz.min)/18 get i/100
+gr el.n1 yy peak -Dash
+gr el.n1 -mark 7800 6500 -text "\${\scriptstyle \phi=%2.3f}\$" peak
+
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gd m[0]
+gr el.n1+2 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (19*yz.min-yz.max)/18 (19*yz.max-yz.min)/18 lin
+
+xtext \$\phi\$
+ytext \$z\$
+
+latexps ${TP}/${FI}/z/prolate/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
+EOF2
+			) > ${PL}/z/prolate/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # contact number plot file
+			( plo < ${PL}/z/prolate/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
+			echo d >> ${PL}/z/prolate/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
+
+			# z_phi_*_KD*_M*_GD*_oblate.plo
+
+			( cat <<EOF2
+< ${TP}/${ZR}/z_${NU}_KD${K}_M${MA}.out
+
+cal gd ${GD_[$gd]}
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
+
+cal xrho select(rho,gdot=gd&z>0)
+cal yz select(z,gdot=gd&z>0)
+
+gr 0,,el.n1-1 z rho -err zsd -line -sel alpha=el[#]&gdot=gd
+gr 0,,el.n1-1 -mark 8000 500+#*600 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
+
+gr el.n1 -mark 500 6000 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gd m[0]
+gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (19*yz.min-yz.max)/18 (19*yz.max-yz.min)/18 lin
+
+xtext \$\phi\$
+ytext \$z\$
+
+latexps ${TP}/${FI}/z/oblate/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+EOF2
+			) > ${PL}/z/oblate/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # contact number plot file
+			( plo < ${PL}/z/oblate/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
+			echo d >> ${PL}/z/oblate/z_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
 
 			# ori*_phi_*_KD*_M*_GD*_prolate.plo
 
