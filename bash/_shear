@@ -1060,7 +1060,7 @@ gr 0,,el.n1-1 omega/gdot rho -err omega?/gdot -line -sel alpha=el[#]
 gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%6.2f}\$" el[#]
 
 icol yy
-for i 1000*(19*omegagd.min-omegagd.max)/18 1000*(19*omegagd.max-omegagd.min)/18 get i/1000
+for i 100*(19*omegagd.min-omegagd.max)/18 100*(19*omegagd.max-omegagd.min)/18 get i/100
 gr el.n1 yy peak -Dash
 gr el.n1 -mark 7800 6500 -text "\${\scriptstyle \phi=%2.3f}\$" peak
 
