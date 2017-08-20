@@ -155,9 +155,8 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	col3=( Ag cg ) # data to be measured graphically
 	col=( ${col0[@]} ${col1[@]} ${col2[@]} ${col3[@]} ) # data to be measured
 	declare -A hashcol # hash table of the element in col
-	ind=0; for el in ${col[@]}; do
-		hashcol+=( [$el]=$ind ) # index of the element el in col
-		ind=$(($ind+1))
+	for ind in $(seq 0 $((${#col[@]}-1))); do
+		hashcol+=( [${col[$ind]}]=$ind ) # index of the elements in col
 	done
 	> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.out # plo data
 	echo "icol ${col[@]}" >> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.out
