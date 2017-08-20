@@ -107,6 +107,7 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	mkdir -p ${FI}/orij
 	mkdir -p ${FI}/omegagd
 	mkdir -p ${FI}/omegagd/omegagd_phi_gd
+	mkdir -p ${FI}/omegagd/omegagd_phieff_gd
 	mkdir -p ${FI}/omegagd/omegagd_phi_el
 	for dir in prolate oblate; do
 		mkdir -p ${FI}/ori/${dir}
@@ -153,6 +154,11 @@ ssh $LA "bash -s $NU $K $MA $TP $OU $CR $ZR $PL $FI" << 'EOF' # executes on tp.u
 	col2=( A Asd c csd chisqb ) # data to be measured with Levenberg-Marquadt
 	col3=( Ag cg ) # data to be measured graphically
 	col=( ${col0[@]} ${col1[@]} ${col2[@]} ${col3[@]} ) # data to be measured
+	declare -A hashcol # hash table of the element in col
+	ind=0; for el in ${col[@]}; do
+		hashcol+=( [$el]=$ind ) # index of the element el in col
+		ind=$(($ind+1))
+	done
 	> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.out # plo data
 	echo "icol ${col[@]}" >> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.out
 	> ${CR}/cr_exp_${NU}_KD${K}_M${MA}.csv # csv data
@@ -665,13 +671,16 @@ EOF2
 
 			done
 
-			# omegagd_phi_*_KD*_M*_EL*.plo
+			# omegagd_*_KD*_M*_EL*.plo
 
 			( cat <<EOF2
 < ${TP}/${OU}/${NU}_KD${K}_M${MA}_EL${EL[$el]}
 
 icol gd
 `for gd in ${GD[@]}; do echo $gd; done`
+
+cal c ${crexp[${hashcol[cg]}]}
+cal w -0.5*${crexp[${hashcol[q]}]}/${crexp[${hashcol[h]}]}
 
 
 fig a
@@ -691,10 +700,29 @@ xtext \$\phi\$
 ytext \$\omega/\dot{\gamma}\$
 
 latexps ${TP}/${FI}/omegagd/omegagd_phi_gd/omegagd_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+
+
+fig b
+
+cal xphieff rho-c*energy^w
+
+gr 0,,gd.n1-1 omega/gdot rho-c*energy^w -err omega?/gdot -line -sel gdot=gd[#]
+gr 0,,gd.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
+
+gr gd.n1 -mark 500 6500 -text "\${\scriptstyle \alpha=%1.2f,~ m=%g}\$" alpha[0] m[0]
+gr gd.n1+1 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xphieff.min-xphieff.max)/2 (3*xphieff.max-xphieff.min)/2 lin
+yl (19*omegagd.min-omegagd.max)/18 (19*omegagd.max-omegagd.min)/18 lin
+
+xtext \$\phi_{eff}\$
+ytext \$\omega/\dot{\gamma}\$
+
+latexps ${TP}/${FI}/omegagd/omegagd_phieff_gd/omegagd_phieff_${NU}_KD${K}_M${MA}_EL${EL[$el]}
 EOF2
-			) > ${PL}/omegagd_gd/omegagd_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo # rotation velocity over shear rate plot file
-			( plo < ${PL}/omegagd_gd/omegagd_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
-			echo d >> ${PL}/omegagd_gd/omegagd_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
+			) > ${PL}/omegagd_gd/omegagd_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo # rotation velocity over shear rate plot file
+			( plo < ${PL}/omegagd_gd/omegagd_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
+			echo d >> ${PL}/omegagd_gd/omegagd_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
 
 		fi
 
