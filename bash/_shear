@@ -830,7 +830,7 @@ EOF2
 
 				if [ -f bin/ltot ]; then
 					values=( ` ( plo <<EOF2
-< "ls lat/$file | bin/ltot
+< "ls Lat/$file | bin/ltot
 list N rho gdot kd m alpha zr
 EOF2
 					) | grep -v Plo ` ) # number of contacts without rattlers
