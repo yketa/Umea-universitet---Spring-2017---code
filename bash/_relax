@@ -86,7 +86,7 @@ if [ "$UD" = on ]; then # request to update the output files
 							echo data/$file | bin/ttime >> outputs/${file}.ttime # time plot
 							echo lat/$file | bin/ltot >> outputs/${file}.ltot # average plot
 						fi
-					else # minimum energy was not reached
+					elif ! grep -Fq "NOT TO BE RELAUNCHED" log/$file; then # minimum energy was not reached and the relaxation can be relaunched
 						echo "Relaxation of ${file} has not finished at minimum energy. Relaunching simulations."
 						if [ -f sub/$file ]; then
 							rm sub/$file
