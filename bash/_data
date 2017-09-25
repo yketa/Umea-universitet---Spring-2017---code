@@ -1,9 +1,0 @@
-#! /bin/bash
-
-# Returns the corresponding argument from a data file name.
-
-arg=$1 # corresponding argument
-file=$2 # data file name
-
-file=${file#*$arg}
-echo ${file%%_*}
