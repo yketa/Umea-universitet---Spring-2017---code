@@ -66,6 +66,7 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 	if [ ! -d ltot ] && [ -f bin/ltot ]; then
 		mkdir ltot
 	fi
+	mkdir -p ttime
 
 	mkdir -p $CR
 	mkdir -p $ZR
@@ -93,6 +94,10 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 		mkdir -p ${PL}/zr_phi
 		mkdir -p ${PL}/grc_scale
 	fi
+	mkdir -p ${PL}/vijrc_gd
+	mkdir -p ${PL}/vijrc_el
+	mkdir -p ${PL}/vijrc_el/prolate
+	mkdir -p ${PL}/vijrc_el/oblate
 
 	mkdir -p $FI
 	mkdir -p ${FI}/p_scale
@@ -139,6 +144,11 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 		mkdir -p ${FI}/grc_scale/grc-phi
 		mkdir -p ${FI}/grc_scale/grc-dphi-scale
 	fi
+	mkdir -p ${FI}/vijrc_phi_gd
+	mkdir -p ${FI}/vijrc_phi_el
+	mkdir -p ${FI}/vijrc_phi_el/prolate
+	mkdir -p ${FI}/vijrc_phi_el/oblate
+
 
 	while (( ${#NU} < 4 )); do
 		NU=0${NU} # number of particles with adequate number of zeros
@@ -173,6 +183,15 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 			done
 			echo ""
 		fi
+	fi
+
+	files_ttime=($(for file in ${files[@]}; do if [ ! -f ttime/${file}.ttime ] || [ data/$file -nt ttime/${file}.ttime ]; then echo $file; fi; done)) # data files which do not have a corresponding .ttime file or which are newer than the corresponding .ttime file
+	if (( "${#files_ttime[@]}" > 0 )); then # some data files have to be converted to .tot files
+		for file in $(seq 0 $((${#files_ttime[@]}-1))); do
+			echo -ne "Creating or renewing ${#files_ttime[@]} .ttime files. ($(($file+1))/${#files_ttime[@]})\r"
+			echo data/${files_ttime[$file]} | bin/ttime > ttime/${files_ttime[$file]}.ttime
+		done
+		echo ""
 	fi
 
 	printf "\n"
@@ -950,6 +969,37 @@ EOF2
 			( plo < ${PL}/omegagd_gd/omegagd_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
 			echo d >> ${PL}/omegagd_gd/omegagd_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
 
+			# vijrc_*_KD*_M*_EL*.plo
+
+			( cat <<EOF2
+< "cat ${TP}/ltot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+
+icol gd
+`for gd in ${GD[@]}; do echo $gd; done`
+
+cal vijrc sqrt(rvij2/cvij2)
+
+
+fig a
+
+gr 0,,gd.n1-1 vijrc rho -line -sel gdot=gd[#]
+gr 0,,gd.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
+
+gr gd.n1 -mark 500 6500 -text "\${\scriptstyle \alpha=%1.2f,~ m=%g}\$" alpha[0] m[0]
+gr gd.n1+1 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (19*vijrc.min-vijrc.max)/18 (19*vijrc.max-vijrc.min)/18 lin
+
+xtext \$\phi\$
+ytext \$v^R_{ij}/v^C_{ij}\$
+
+latexps ${TP}/${FI}/vijrc_phi_gd/vijrc_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+EOF2
+			) > ${PL}/vijrc_gd/vijrc_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo # rotational and centre of mass velocity ratio at contact plot file
+			( plo < ${PL}/vijrc_gd/vijrc_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
+			echo d >> ${PL}/vijrc_gd/vijrc_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
+
 		fi
 
 	done
@@ -1050,7 +1100,7 @@ EOF2
 					foo="icol ori${or}m ori${or}sd" # item to look for in .tot files
 					if ! grep -Fq "$foo" tot/${file}.tot; then
 						mean_stdev=( `( plo <<EOF2
-< "cat ltot/${file}.ltot
+< "cat ttime/${file}.ttime
 
 < "_plo_mean_stdev ori${or}
 list mean stdev
@@ -1708,6 +1758,74 @@ EOF2
 				) > ${PL}/ori_el/oblate/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # orientation plot file
 				( plo < ${PL}/ori_el/oblate/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
 				echo d >> ${PL}/ori_el/oblate/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
+
+				# vijrc_phi_*_KD*_M*_GD*_prolate.plo
+
+				( cat <<EOF2
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
+
+cal vijrc sqrt(rvij2/cvij2)
+
+cal xrho select(rho,alpha>1)
+cal yvijrc select(vijrc,alpha>1)
+
+
+fig a
+
+gr 0,,el.n1-1 vijrc rho -err 0 -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (19*yvijrc.min-yvijrc.max)/18 (19*yvijrc.max-yvijrc.min)/18 lin
+
+xtext \$\phi\$
+ytext \$v^R_{ij}/v^C_{ij}\$
+
+latexps ${TP}/${FI}/vijrc_phi_el/prolate/vijrc_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
+EOF2
+				) > ${PL}/vijrc_el/prolate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # rotational and centre of mass velocity ratio at contact plot file
+				( plo < ${PL}/vijrc_el/prolate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
+				echo d >> ${PL}/vijrc_el/prolate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
+
+				# vijrc_phi_*_KD*_M*_GD*_oblate.plo
+
+				( cat <<EOF2
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
+
+cal vijrc sqrt(rvij2/cvij2)
+
+cal xrho select(rho,alpha>1)
+cal yvijrc select(vijrc,alpha>1)
+
+
+fig a
+
+gr 0,,el.n1-1 vijrc rho -err 0 -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (19*yvijrc.min-yvijrc.max)/18 (19*yvijrc.max-yvijrc.min)/18 lin
+
+xtext \$\phi\$
+ytext \$v^R_{ij}/v^C_{ij}\$
+
+latexps ${TP}/${FI}/vijrc_phi_el/oblate/vijrc_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+EOF2
+				) > ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # rotational and centre of mass velocity ratio at contact plot file
+				( plo < ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
+				echo d >> ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
 
 			done
 
