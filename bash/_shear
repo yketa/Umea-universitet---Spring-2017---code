@@ -98,6 +98,10 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 	mkdir -p ${PL}/vijrc_el
 	mkdir -p ${PL}/vijrc_el/prolate
 	mkdir -p ${PL}/vijrc_el/oblate
+	mkdir -p ${PL}/S2_gd
+	mkdir -p ${PL}/S2_el
+	mkdir -p ${PL}/S2_el/prolate
+	mkdir -p ${PL}/S2_el/oblate
 
 	mkdir -p $FI
 	mkdir -p ${FI}/p_scale
@@ -148,6 +152,10 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 	mkdir -p ${FI}/vijrc_phi_el
 	mkdir -p ${FI}/vijrc_phi_el/prolate
 	mkdir -p ${FI}/vijrc_phi_el/oblate
+	mkdir -p ${FI}/S2_phi_gd
+	mkdir -p ${FI}/S2_phi_el
+	mkdir -p ${FI}/S2_phi_el/prolate
+	mkdir -p ${FI}/S2_phi_el/oblate
 
 
 	while (( ${#NU} < 4 )); do
@@ -1000,6 +1008,35 @@ EOF2
 			( plo < ${PL}/vijrc_gd/vijrc_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
 			echo d >> ${PL}/vijrc_gd/vijrc_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
 
+			# S2_*_KD*_M*_EL*.plo
+
+			( cat <<EOF2
+< "cat ${TP}/ltot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+
+icol gd
+`for gd in ${GD[@]}; do echo $gd; done`
+
+
+fig a
+
+gr 0,,gd.n1-1 nemS2 rho -err 0 -line -sel gdot=gd[#]
+gr 0,,gd.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
+
+gr gd.n1 -mark 500 6500 -text "\${\scriptstyle \alpha=%1.2f,~ m=%g}\$" alpha[0] m[0]
+gr gd.n1+1 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*rho.min-rho.max)/2 (3*rho.max-rho.min)/2 lin
+yl (19*nemS2.min-nemS2.max)/18 (19*nemS2.max-nemS2.min)/18 lin
+
+xtext \$\phi\$
+ytext \$S_2\$
+
+latexps ${TP}/${FI}/S2_phi_gd/S2_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+EOF2
+			) > ${PL}/S2_gd/S2_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo # biggest eigenvalue of the order tensor plot file
+			( plo < ${PL}/S2_gd/S2_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
+			echo d >> ${PL}/S2_gd/S2_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
+
 		fi
 
 	done
@@ -1828,6 +1865,77 @@ EOF2
 				) > ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # rotational and centre of mass velocity ratio at contact plot file
 				( plo < ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
 				echo d >> ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
+
+				# S2_phi_*_KD*_M*_GD*_prolate.plo
+
+				( cat <<EOF2
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
+
+cal xrho select(rho,alpha>1)
+cal yS2 select(nemS2,alpha>1)
+
+`_plo_peak nemS2 rho el alpha`
+
+
+fig a
+
+gr 0,,el.n1-1 nemS2 rho -err 0 -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
+
+icol yy
+for i 1000*(19*yS2.min-yS2.max)/18 1000*(19*yS2.max-yS2.min)/18 get i/1000
+gr el.n1 yy peak -Dash
+gr el.n1 -mark 7300 6500 -text "${\scriptstyle \phi=%2.3f}$" peak
+
+gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+2 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (19*yS2.min-yS2.max)/18 (19*yS2.max-yS2.min)/18 lin
+
+xtext \$\phi\$
+ytext \$S_2\$
+
+latexps ${TP}/${FI}/S2_phi_el/prolate/S2_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
+EOF2
+				) > ${PL}/S2_el/prolate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # biggest eigenvalue of the order tensor plot file
+				( plo < ${PL}/S2_el/prolate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
+				echo d >> ${PL}/S2_el/prolate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
+
+				# S2_phi_*_KD*_M*_GD*_oblate.plo
+
+				( cat <<EOF2
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
+
+cal xrho select(rho,alpha<1)
+cal yS2 select(nemS2,alpha<1)
+
+
+fig a
+
+gr 0,,el.n1-1 nemS2 rho -err 0 -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (19*yS2.min-yS2.max)/18 (19*yS2.max-yS2.min)/18 lin
+
+xtext \$\phi\$
+ytext \$S_2\$
+
+latexps ${TP}/${FI}/S2_phi_el/oblate/S2_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+EOF2
+				) > ${PL}/S2_el/oblate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # biggest eigenvalue of the order tensor plot file
+				( plo < ${PL}/S2_el/oblate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
+				echo d >> ${PL}/S2_el/oblate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
 
 			done
 
