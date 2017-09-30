@@ -982,7 +982,7 @@ cal vijrc sqrt(rvij2/cvij2)
 
 fig a
 
-gr 0,,gd.n1-1 vijrc rho -line -sel gdot=gd[#]
+gr 0,,gd.n1-1 vijrc rho -err 0 -line -sel gdot=gd[#]
 gr 0,,gd.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gd[#]
 
 gr gd.n1 -mark 500 6500 -text "\${\scriptstyle \alpha=%1.2f,~ m=%g}\$" alpha[0] m[0]
@@ -1058,11 +1058,13 @@ EOF2
 	> ${ZR}/z_${NU}_KD${K}_M${MA}.out # plo data
 	> ${ZR}/z_${NU}_KD${K}_M${MA}.csv # csv data
 	if [ -d ltot ]; then
-		echo "icol N rho gdot kd m alpha zr z ? engr" >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
-		echo "N,rho,gdot,kd,m,alpha,zr,z,zsd,engr," >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
+		z_col=( N rho gdot kd m alpha zr z zsd engr ) # variables to be measured for contact output files
+		echo "icol $(for el in ${z_col[@]}; do echo $el | ( [[ ${el: -2} == sd ]] && sed s/$el/?/ || cat); done)" >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
+		echo ${z_col[@]} | sed s/' '/','/ >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
 	else
-		echo "icol N rho gdot kd m alpha z ? engr" >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
-		echo "N,rho,gdot,kd,m,alpha,z,zsd,engr," >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
+		z_col=( N rho gdot kd m alpha z zsd engr ) # variables to be measured for contact output files
+		echo "icol $(for el in ${z_col[@]}; do echo $el | ( [[ ${el: -2} == sd ]] && sed s/$el/?/ || cat); done)" >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
+		echo ${z_col[@]} | sed s/' '/','/ >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
 	fi
 
 	p_col=( ${p_col[@]:${#p_col0[@]}} ) # columns of critical exponents associated to pressure to add to output data files
@@ -1123,7 +1125,7 @@ EOF2
 list z z? engr
 EOF2
 					) | grep -v Plo ` )
-					if [[ ( "${values[-3]}" != "-" ) || ( "${values[-4]}" != "-" ) ]]; then # the number of contacts is defined
+					if [[ ( "${values[-3]}" != "-" ) || ( "${values[-4]}" != "-" ) ]] && (( "${#values[@]}" = "${#z_col[@]}" )); then # the number of contacts is defined
 						echo ${values[@]} >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
 						echo ${values[@]} | sed s/' '/','/g >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
 					fi
@@ -1133,7 +1135,7 @@ EOF2
 list N rho gdot kd m alpha z z? engr
 EOF2
 					) | grep -v Plo ` ) # number of contacts (with rattlers)
-					if [[ "${values[-3]}" != "-" ]]; then # the number of contacts is defined
+					if [[ "${values[-3]}" != "-" ]] && (( "${#values[@]}" = "${#z_col[@]}" )); then # the number of contacts is defined
 						echo ${values[@]} >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
 						echo ${values[@]} | sed s/' '/','/g >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
 					fi
