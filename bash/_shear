@@ -1096,13 +1096,13 @@ EOF2
 	> ${ZR}/z_${NU}_KD${K}_M${MA}.csv # csv data
 	if [ -d ltot ]; then
 		z_col=( N rho gdot kd m alpha zr z zsd engr ) # variables to be measured for contact output files
-		echo "icol $(for el in ${z_col[@]}; do echo $el | ( [[ ${el: -2} == sd ]] && sed s/$el/?/ || cat); done)" >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
-		echo ${z_col[@]} | sed s/' '/','/ >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
+		foo="icol $(for el in ${z_col[@]}; do echo $el | ( [[ ${el: -2} == sd ]] && sed s/$el/?/ || cat); done)" # variables to be measured for contact output files parsed for plo
 	else
 		z_col=( N rho gdot kd m alpha z zsd engr ) # variables to be measured for contact output files
-		echo "icol $(for el in ${z_col[@]}; do echo $el | ( [[ ${el: -2} == sd ]] && sed s/$el/?/ || cat); done)" >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
-		echo ${z_col[@]} | sed s/' '/','/ >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
+		foo="icol $(for el in ${z_col[@]}; do echo $el | ( [[ ${el: -2} == sd ]] && sed s/$el/?/ || cat); done)" # variables to be measured for contact output files parsed for plo
 	fi
+	echo $foo >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
+	echo ${z_col[@]} | sed s/' '/','/g >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
 
 	p_col=( ${p_col[@]:${#p_col0[@]}} ) # columns of critical exponents associated to pressure to add to output data files
 
@@ -1162,7 +1162,7 @@ EOF2
 list z z? engr
 EOF2
 					) | grep -v Plo ` )
-					if [[ ( "${values[-3]}" != "-" ) || ( "${values[-4]}" != "-" ) ]] && (( "${#values[@]}" = "${#z_col[@]}" )); then # the number of contacts is defined
+					if [[ ( "${values[-3]}" != "-" ) || ( "${values[-4]}" != "-" ) ]] && [[ "${#values[@]}" = "${#z_col[@]}" ]]; then # the number of contacts is defined
 						echo ${values[@]} >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
 						echo ${values[@]} | sed s/' '/','/g >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
 					fi
@@ -1172,7 +1172,7 @@ EOF2
 list N rho gdot kd m alpha z z? engr
 EOF2
 					) | grep -v Plo ` ) # number of contacts (with rattlers)
-					if [[ "${values[-3]}" != "-" ]] && (( "${#values[@]}" = "${#z_col[@]}" )); then # the number of contacts is defined
+					if [[ "${values[-3]}" != "-" ]] && [[ "${#values[@]}" = "${#z_col[@]}" ]]; then # the number of contacts is defined
 						echo ${values[@]} >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
 						echo ${values[@]} | sed s/' '/','/g >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
 					fi
@@ -1888,7 +1888,7 @@ gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
 icol yy
 for i 1000*(19*yS2.min-yS2.max)/18 1000*(19*yS2.max-yS2.min)/18 get i/1000
 gr el.n1 yy peak -Dash
-gr el.n1 -mark 7300 6500 -text "${\scriptstyle \phi=%2.3f}$" peak
+gr el.n1 -mark 7300 6500 -text "\${\scriptstyle \phi=%2.3f}\$" peak
 
 gr el.n1+1 -mark 500 6500 -text "\${\scriptstyle \dot{\gamma}=%g,~ m=%g}\$" gdot[0] m[0]
 gr el.n1+2 -mark 500 6000 -text "\${\scriptstyle N=%6.0f,~ k_d=%g}\$" N[0] kd[0]
