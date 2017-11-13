@@ -1153,7 +1153,7 @@ yl (4*yomegav.min-yomegav.max)/3 (4*yomegav.max-yomegav.min)/3 lin
 xtext \$\phi\$
 ytext \$\omega/v\$
 
-latexps ${TP}/omegav/omegav_phi_gd/omegav_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+latexps ${TP}/${FI}/omegav/omegav_phi_gd/omegav_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}
 EOF2
 			) > ${PL}/omegav_gd/omegav_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo # ratio of rotational and translational velocities plot file
 			( plo < ${PL}/omegav_gd/omegav_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
@@ -2297,11 +2297,11 @@ EOF2
 
 	# omegav_phiJ_*_KD*_M*.plo
 
-	GD_=( `plo <<EOF2
+	GD_=( `( plo <<EOF2
 < ${OV}/omegav_phiJ_${NU}_KD${K}_M${MA}.out
 list gdot
 EOF2
-	` | grep -v Plo ) # shear rates which have been analysed in the data file...
+	) | grep -v Plo` ) # shear rates which have been analysed in the data file...
 	GD_=($(for gd in ${GD_[@]}; do echo $gd; done | sort)) # ...sorted
 	GD=() # shear rates which have been analysed in the data file without repetition
 	for gd in ${GD_[@]}; do
