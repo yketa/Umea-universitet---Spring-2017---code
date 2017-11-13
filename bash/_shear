@@ -22,12 +22,13 @@ LP=${LOCALPATH-/Users/yketa/Cours/ENS/M1/Stage/Umeå/simulations-shear} # local
 
 CR=${CREXP-cr_exp_ouputs-shear} # name of the critical exponents data files directory in TP and local
 ZR=${ZROUT-contact_outputs-shear} # name of the contact numbers data files directory in TP and local
+OV=${OVOUT-omegav_outputs-shear} # name of the ratio of rotational and translational velocities data files directory in TP and local
 PL=${PLOT-scale_plots-shear} # name of the plo scripts directory in TP and local
 FI=${FIG-scale_figs-shear} # name of the figures directory in TP and local
 
 ## SCRIPT
 
-ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.se
+ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $OV $PL $FI" << 'EOF' # executes on tp.umu.se
 
 	NU=$1 # simulations with N=NU particles
 	shift
@@ -41,6 +42,8 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 	CR=$1 # critical exponents data files directory in TP
 	shift
 	ZR=$1 # contact numbers data files directory in TP
+	shift
+	OV=$1 # ratio of rotational and translational velocities data files directory in TP and local
 	shift
 	PL=$1 # plo scripts directory in TP
 	shift
@@ -70,11 +73,13 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 
 	mkdir -p $CR
 	mkdir -p $ZR
+	mkdir -p $OV
 
 	mkdir -p $PL
 	mkdir -p ${PL}/p_scale
 	mkdir -p ${PL}/rheo
 	mkdir -p ${PL}/p_cr_exp
+	mkdir -p ${PL}/p_cr_exp_gdmax
 	mkdir -p ${PL}/ori_gd
 	mkdir -p ${PL}/ori_el
 	mkdir -p ${PL}/orij
@@ -93,15 +98,23 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 	if [ -d ltot ]; then
 		mkdir -p ${PL}/zr_phi
 		mkdir -p ${PL}/grc_scale
+		mkdir -p ${PL}/grc_el
+		mkdir -p ${PL}/grc_el/prolate
+		mkdir -p ${PL}/grc_el/oblate
+		mkdir -p ${PL}/vijrc_gd
+		mkdir -p ${PL}/vijrc_el
+		mkdir -p ${PL}/vijrc_el/prolate
+		mkdir -p ${PL}/vijrc_el/oblate
+		mkdir -p ${PL}/S2_gd
+		mkdir -p ${PL}/S2_el
+		mkdir -p ${PL}/S2_el/prolate
+		mkdir -p ${PL}/S2_el/oblate
 	fi
-	mkdir -p ${PL}/vijrc_gd
-	mkdir -p ${PL}/vijrc_el
-	mkdir -p ${PL}/vijrc_el/prolate
-	mkdir -p ${PL}/vijrc_el/oblate
-	mkdir -p ${PL}/S2_gd
-	mkdir -p ${PL}/S2_el
-	mkdir -p ${PL}/S2_el/prolate
-	mkdir -p ${PL}/S2_el/oblate
+	mkdir -p ${PL}/omegav_gd
+	mkdir -p ${PL}/omegav_el
+	mkdir -p ${PL}/omegav_el/prolate
+	mkdir -p ${PL}/omegav_el/oblate
+	mkdir -p ${PL}/omegav_phiJ
 
 	mkdir -p $FI
 	mkdir -p ${FI}/p_scale
@@ -116,6 +129,10 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 	mkdir -p ${FI}/p_cr_exp
 	mkdir -p ${FI}/p_cr_exp/beta
 	mkdir -p ${FI}/p_cr_exp/phij
+	mkdir -p ${FI}/p_cr_exp_gdmax
+	mkdir -p ${FI}/p_cr_exp_gdmax/beta
+	mkdir -p ${FI}/p_cr_exp_gdmax/phij
+	mkdir -p ${FI}/p_cr_exp_gdmax/chisq
 	mkdir -p ${FI}/ori
 	mkdir -p ${FI}/ori/ori_phi
 	mkdir -p ${FI}/orij
@@ -147,15 +164,23 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 		mkdir -p ${FI}/grc_scale
 		mkdir -p ${FI}/grc_scale/grc-phi
 		mkdir -p ${FI}/grc_scale/grc-dphi-scale
+		mkdir -p ${FI}/grc_phi_el
+		mkdir -p ${FI}/grc_phi_el/prolate
+		mkdir -p ${FI}/grc_phi_el/oblate
+		mkdir -p ${FI}/vijrc_phi_gd
+		mkdir -p ${FI}/vijrc_phi_el
+		mkdir -p ${FI}/vijrc_phi_el/prolate
+		mkdir -p ${FI}/vijrc_phi_el/oblate
+		mkdir -p ${FI}/S2_phi_gd
+		mkdir -p ${FI}/S2_phi_el
+		mkdir -p ${FI}/S2_phi_el/prolate
+		mkdir -p ${FI}/S2_phi_el/oblate
 	fi
-	mkdir -p ${FI}/vijrc_phi_gd
-	mkdir -p ${FI}/vijrc_phi_el
-	mkdir -p ${FI}/vijrc_phi_el/prolate
-	mkdir -p ${FI}/vijrc_phi_el/oblate
-	mkdir -p ${FI}/S2_phi_gd
-	mkdir -p ${FI}/S2_phi_el
-	mkdir -p ${FI}/S2_phi_el/prolate
-	mkdir -p ${FI}/S2_phi_el/oblate
+	mkdir -p ${FI}/omegav/omegav_phi_gd
+	mkdir -p ${FI}/omegav/omegav_phi_el
+	mkdir -p ${FI}/omegav/omegav_phi_el/prolate
+	mkdir -p ${FI}/omegav/omegav_phi_el/oblate
+	mkdir -p ${FI}/omegav_phiJ
 
 
 	while (( ${#NU} < 4 )); do
@@ -171,7 +196,7 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 	# creation of the output files
 
 	echo "Creating repertoire of data files."
-	files=($(for file in `ls data | grep $NU | grep KD${K} | grep M${MA}`; do if [ -f log/$file ]; then if grep -Fq 'Completed after' log/$file; then echo $file; fi; fi; done)) # data files corresponding to completed shearing simulations
+	files=(`ls data | grep $NU | grep KD${K} | grep M${MA}`) # data files corresponding to completed or running shearing simulations and our parameters of interest
 	
 	files_tot=($(for file in ${files[@]}; do if [ ! -f tot/${file}.tot ] || [ data/$file -nt tot/${file}.tot ]; then echo $file; fi; done)) # data files which do not have a corresponding .tot file or which are newer than the corresponding .tot file
 	if (( "${#files_tot[@]}" > 0 )); then # some data files have to be converted to .tot files
@@ -215,14 +240,19 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 	p_col2=( A Asd c csd chisqb ) # data to be measured with Levenberg-Marquadt
 	p_col3=( Ag cg ) # data to be measured graphically
 	p_col=( ${p_col0[@]} ${p_col1[@]} ${p_col2[@]} ${p_col3[@]} ) # data to be measured
+	p_col_gdmax=( ${p_col0[@]} gdmax ${p_col1[@]} ) # data to be measured depending on the maximum shear rate
 	declare -A p_hashcol # hash table of the element in col
 	for ind in $(seq 0 $((${#p_col[@]}-1))); do
 		p_hashcol+=( [${p_col[$ind]}]=$ind ) # index of the elements in col
 	done
 	> ${CR}/p_cr_exp_${NU}_KD${K}_M${MA}.out # plo data
+	> ${CR}/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.out # plo data
 	echo icol $(for el in ${p_col[@]}; do echo $el | ( [[ ${el: -2} == sd ]] && sed s/$el/?/ || cat); done) >> ${CR}/p_cr_exp_${NU}_KD${K}_M${MA}.out
+	echo icol $(for el in ${p_col_gdmax[@]}; do echo $el | ( [[ ${el: -2} == sd ]] && sed s/$el/?/ || cat); done) >> ${CR}/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.out
 	> ${CR}/p_cr_exp_${NU}_KD${K}_M${MA}.csv # csv data
+	> ${CR}/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.csv # csv data
 	echo ${p_col[@]} | sed s/' '/','/g >> ${CR}/p_cr_exp_${NU}_KD${K}_M${MA}.csv
+	echo ${p_col_gdmax[@]} | sed s/' '/','/g >> ${CR}/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.csv
 	declare -A p_cr_exp # hash tables of the critical exponents per aspect ratio
 
 	# critical exponents for the correlation of rotational and translational velocities
@@ -242,8 +272,8 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $PL $FI" << 'EOF' # executes on tp.umu.s
 	fi
 
 	# parameters for scaling analysis
-	gdotmin=1e-6 # minimum shear rate
-	gdotmax=1e-4 # maximum shear rate
+	gdotmin=5e-7 # minimum shear rate
+	gdotmax=5e-5 # maximum shear rate
 	xmax=0.4 # maximum absolute value of the scaling variable used in the fit
 
 	for el in $(seq 0 $((${#EL[@]}-1))); do
@@ -421,6 +451,67 @@ EOF2
 			if [[ "${#values[@]}" = "${#p_col[@]}" ]]; then # no error in the determination of the critical exponents (this should always be true because of the previous tests)
 				echo ${values[@]} >> ${CR}/p_cr_exp_${NU}_KD${K}_M${MA}.out # writes in plo parsed file
 				echo ${values[@]} | sed s/' '/','/g >> ${CR}/p_cr_exp_${NU}_KD${K}_M${MA}.csv # writes in csv parsed data
+			fi
+
+			# p_cr_exp_gdmax_*_KD*_M*.*
+
+			if (( "${#GD[@]}" > 1 )); then # we need at least 2 shear rates to make the scaling analysis
+				for gdmax in ${GD[@]:1}; do # we calculate critical exponents for every shear rate tested as the maximum
+
+					p_crexp=( `( plo <<EOF2
+< "cat tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+
+cal gdotmax $gdmax
+cal xmax $xmax
+
+cal sdfact sqrt((engr-1)/(engr-3))
+cal phi rho
+
+cal \\$q 0.183347
+cal \\$a0 -2.82432
+cal \\$a1 4.19327
+cal \\$rhoc 0.707465
+cal \\$h -0.190358
+cal \\$a2 -5.98509
+cal \\$a3 12.8789 
+cal \\$a4 24.9358
+cal \\$a5 0
+
+cal X (phi-\\$rhoc)*gdot^\\$h
+cal Sel abs(X)<xmax&engr>3&gdot<=gdotmax
+
+for nn 1 10
+icol q a0 a1 rhoc h a2 a3 a4 a5 qsd a0sd a1sd rhocsd hsd a2sd a3sd a4sd a5sd chisq
+get "lmarqsd(pe,pe?*sdfact,
+(gdot^\\$q):gk*exp(\\$a0+\\$a1*((phi-\\$rhoc):rd*(gdot^\\$h):gh):gr+\\$a2*(gr*gr):gr2+\\$a3*(gr*gr2):gr3+\\$a4*(gr2*gr2):gr4+\\$a5*gr2*gr3):atot,
+ln(gdot)*gk*atot,
+gk*atot,
+gk*gr*atot,
+gk*gh*(-1)*(\\$a1+\\$a2*2*gr+\\$a3*3*gr2+\\$a4*4*gr3+\\$a5*5*gr4):tot12345*atot,
+gk*ln(gdot)*gh*rd*tot12345*atot,
+gk*gr2*atot,
+gk*gr3*atot,
+gk*gr4*atot,
+gk*gr2*gr3*atot,
+Sel)
+end
+
+cal beta (q[q.n1-1]-1)/h[h.n1-1]
+cal betasd beta*sqrt((qsd[qsd.n1-1]/q[q.n1-1])^2+(hsd[hsd.n1-1]/h[h.n1-1])^2)
+
+list rhoc[rhoc.n1-1] rhocsd[rhocsd.n1-1] beta betasd q[q.n1-1] qsd[qsd.n1-1] h[h.n1-1] hsd[hsd.n1-1] chisq[chisq.n1-1]
+exit
+EOF2
+					) | grep -v Plo | grep -v '...>'` ) # critical exponents, inferred from the Levenberg–Marquardt least squared curve fitting method
+
+					values="${NU} ${K:1:1}.${K:2:2}${exponents[${K:0:1}]} ${MA:1:1}.${MA:2:2}${exponents[${MA:0:1}]} ${EL[$el]:0:1}.${EL[$el]:1:2} $gdmax ${p_crexp[@]} " # values
+					values=( $values )
+					if [[ "${#values[@]}" = "${#p_col_gdmax[@]}" ]]; then
+						echo ${values[@]} >> ${CR}/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.out # writes in plo parsed file
+						echo ${values[@]} | sed s/' '/','/g >> ${CR}/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.csv # writes in csv parsed data
+					fi
+
+				done
 			fi
 
 			# p_scale_*_KD*_M*_EL*.plo
@@ -1037,6 +1128,37 @@ EOF2
 			( plo < ${PL}/S2_gd/S2_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
 			echo d >> ${PL}/S2_gd/S2_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
 
+			# omegav_*_KD*_M*_EL*.plo
+
+			( cat <<EOF2
+< "cat ${TP}/tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+
+icol gd
+`for gd in ${GD[@]}; do echo $gd; done`
+
+cal yomegav select(omega/vr,1=1)
+
+
+fig a
+
+gr 0,,gd.n1-1 omega/vr rho -line -sel gdot=gd[#]
+gr 0,,gd.n1-1 -mark 500 500+500*# -text "\${\scriptstyle \dot\gamma=%g}\$" gd[#]
+
+gr gd.n1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
+gr gd.n1+1 -mark 500 6000 -text "\${\scriptstyle \alpha=%1.2f}\$" alpha[0]
+
+xl ((13/4)*rho.min-rho.max)*(4/9) ((11/2)*rho.max-rho.min)*(2/9) lin
+yl (4*yomegav.min-yomegav.max)/3 (4*yomegav.max-yomegav.min)/3 lin
+
+xtext \$\phi\$
+ytext \$\omega/v\$
+
+latexps ${TP}/omegav/omegav_phi_gd/omegav_phi_${NU}_KD${K}_M${MA}_EL${EL[$el]}
+EOF2
+			) > ${PL}/omegav_gd/omegav_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo # ratio of rotational and translational velocities plot file
+			( plo < ${PL}/omegav_gd/omegav_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo ) &> /dev/null
+			echo d >> ${PL}/omegav_gd/omegav_${NU}_KD${K}_M${MA}_EL${EL[$el]}.plo
+
 		fi
 
 	done
@@ -1049,6 +1171,9 @@ EOF2
 cal xalpha select(alpha,chisq<4)
 cal ybeta select(beta,chisq<4)
 cal yphij select(phij,chisq<4)
+
+icol el
+`for el in ${_EL[@]}; do echo ${el:0:1}.${el:1:2}; done`
 
 
 fig a
@@ -1079,10 +1204,75 @@ xl (19*xalpha.min-xalpha.max)/18 (19*xalpha.max-xalpha.min)/18 lin
 yl (19*yphij.min-yphij.max)/18 (19*yphij.max-yphij.min)/18 lin
 
 latexps ${TP}/${FI}/p_cr_exp/phij/phij_alpha_${NU}_KD${K}_M${MA}
+
+
+fig c
+
+gr 0,,el.n1-1 beta gdmax 
 EOF2
 	) > ${PL}/p_cr_exp/p_cr_exp_${NU}_KD${K}_M${MA}.plo # critical exponents plot file
 	( plo < ${PL}/p_cr_exp/p_cr_exp_${NU}_KD${K}_M${MA}.plo ) &> /dev/null
 	echo d >> ${PL}/p_cr_exp/p_cr_exp_${NU}_KD${K}_M${MA}.plo
+
+	# p_cr_exp_gdmax_*_KD*_M*.plo
+
+	( cat <<EOF2
+< ${TP}/${CR}/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.out
+
+icol el
+`for el in ${_EL[@]}; do echo ${el:0:1}.${el:1:2}; done`
+
+
+fig a
+
+gr 0,,el.n1-1 beta gdmax -err beta? -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+500*# -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle N=%g,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
+
+xtext \$\dot{\gamma}_{max}\$
+ytext \$\beta\$
+
+xl exp((4*ln(gdmax.min)-ln(gdmax.max))/3) exp((4*ln(gdmax.max)-ln(gdmax.min))/3) log
+yl (4*beta.min-beta.max)/3 (4*beta.max-beta.min)/3 lin
+
+latexps ${TP}/${FI}/p_cr_exp_gdmax/beta/beta_gdmax_${NU}_KD${K}_M${MA}
+
+
+fig b
+
+gr 0,,el.n1-1 phij gdmax -err phij? -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+500*# -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle N=%g,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
+
+xtext \$\dot{\gamma}_{max}\$
+ytext \$\phi_J\$
+
+xl exp((4*ln(gdmax.min)-ln(gdmax.max))/3) exp((4*ln(gdmax.max)-ln(gdmax.min))/3) log
+yl (4*phij.min-phij.max)/3 (4*phij.max-phij.min)/3 lin
+
+latexps ${TP}/${FI}/p_cr_exp_gdmax/phij/phij_gdmax_${NU}_KD${K}_M${MA}
+
+
+fig c
+
+gr 0,,el.n1-1 chisq gdmax -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+500*# -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle N=%g,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
+
+xtext \$\dot{\gamma}_{max}\$
+ytext \$\chi^2/DOF\$
+
+xl exp((4*ln(gdmax.min)-ln(gdmax.max))/3) exp((4*ln(gdmax.max)-ln(gdmax.min))/3) log
+yl (4*chisq.min-chisq.max)/3 (4*chisq.max-chisq.min)/3 lin
+
+latexps ${TP}/${FI}/p_cr_exp_gdmax/chisq/chisq_gdmax_${NU}_KD${K}_M${MA}
+EOF2
+	) > ${PL}/p_cr_exp_gdmax/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.plo # critical exponents according to maximum shear rates plot file
+	( plo < ${PL}/p_cr_exp_gdmax/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.plo ) &> /dev/null
+	echo d >> ${PL}/p_cr_exp_gdmax/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.plo
 
 	# per shear rate
 
@@ -1104,7 +1294,13 @@ EOF2
 	echo $foo >> ${ZR}/z_${NU}_KD${K}_M${MA}.out
 	echo ${z_col[@]} | sed s/' '/','/g >> ${ZR}/z_${NU}_KD${K}_M${MA}.csv
 
-	p_col=( ${p_col[@]:${#p_col0[@]}} ) # columns of critical exponents associated to pressure to add to output data files
+	> ${OV}/omegav_phiJ_${NU}_KD${K}_M${MA}.out # plo data
+	> ${OV}/omegav_phiJ_${NU}_KD${K}_M${MA}.csv # csv data
+	foo="gdot alpha omegav_phiJ"
+	echo "icol $foo" >> ${OV}/omegav_phiJ_${NU}_KD${K}_M${MA}.out
+	echo $foo | sed s/' '/','/g >> ${OV}/omegav_phiJ_${NU}_KD${K}_M${MA}.csv
+
+	p_col=( $(for el in ${p_col[@]:${#p_col0[@]}}; do echo $el | ( [[ ${el: -2} == sd ]] && sed s/$el/?/ || cat); done) ) # columns of critical exponents associated to pressure to add to output data files
 
 	for gd in $(seq 0 $((${#GD[@]}-1))); do
 
@@ -1123,8 +1319,9 @@ EOF2
 				fi
 
 				# adding critical exponents data to the .tot files
-				foo="icol $(for el in ${p_col[@]}; do echo $el | ( [[ ${el: -2} == sd ]] && sed s/$el/?/ || cat); done)" # item to look for in .tot files
+				foo="icol ${p_col[@]}" # item to look for in .tot files
 				if ! grep -Fq "$foo" tot/${file}.tot; then
+					echo $file
 					p_crexp=( ${p_cr_exp[${file:${args[EL]}:3}]} )
 					echo $foo >> tot/${file}.tot
 					if [[ "${#p_crexp[@]}" = "${#p_col[@]}" ]]; then # no errors in the critical exponents
@@ -1181,6 +1378,29 @@ EOF2
 			done
 			EL_=($(for el in ${EL_[@]}; do echo $el; done | sort)) # sorted aspect ratios
 			unset EL; EL=($(for el in ${EL_[@]}; do echo ${el:0:1}.${el:1:2}; done)) # arrays of the aspect ratios
+
+			# omegav_phiJ_${NU}_KD${K}_M${MA}.*
+
+			for el in $(seq 0 $((${#EL[@]}-1))); do
+				if ls tot/1024_*_GD${GD[$gd]}_KD${K}_M${MA}_EL${EL_[$el]}_* &> /dev/null; then # if there are .tot files corresponding to these parameters
+					omegav=( `( plo <<EOF2
+< "cat tot/1024_*_GD${GD[$gd]}_KD${K}_M${MA}_EL${EL_[$el]}_*
+list select(omega/vr,rho>phij)
+EOF2
+					) | grep -v Plo` ) # ratio of rotational and translational velocities values above phi_J
+					omegav_mean="`python <<EOF2
+omegav=[$(echo ${omegav[@]} | sed s/' '/','/g)]
+print( sum(omegav)/len(omegav) )
+EOF2
+					`"
+				else
+					omegav_mean="-"
+				fi
+
+				values=( ${GD_[$gd]} ${EL[$el]} $omegav_mean ) # mean of the ratio of rotational and translational velocities values above phi_J
+				echo ${values[@]} >> ${OV}/omegav_phiJ_${NU}_KD${K}_M${MA}.out # plo data
+				echo ${values[@]} | sed s/' '/','/g >> ${OV}/omegav_phiJ_${NU}_KD${K}_M${MA}.csv # csv data
+			done
 
 			# orij_phi_*_KD*_M*_GD*_prolate.plo
 
@@ -1798,9 +2018,79 @@ EOF2
 				( plo < ${PL}/ori_el/oblate/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
 				echo d >> ${PL}/ori_el/oblate/ori${or}_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
 
-				# vijrc_phi_*_KD*_M*_GD*_prolate.plo
+			done
 
-				( cat <<EOF2
+			# grc_phi_*_KD*_M*_GD*_prolate.plo
+
+			( cat <<EOF2
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
+
+cal xrho select(rho,alpha>1)
+cal ygrc select(grc,alpha>1)
+
+
+fig a
+
+gr 0,,el.n1-1 grc rho -err grc? -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f}\$" N[0]
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle k_d=%g}\$" kd[0]
+gr el.n1+2 -mark 500 5500 -text "\${\scriptstyle m=%g}\$" m[0]
+gr el.n1+3 -mark 500 5000 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gdot[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (19*ygrc.min-ygrc.max)/18 (19*ygrc.max-ygrc.min)/18 lin
+
+xtext \$\phi\$
+ytext \$g^{RC}\$
+
+latexps ${TP}/${FI}/grc_phi_el/prolate/grc_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
+EOF2
+			) > ${PL}/grc_el/prolate/grc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # rotational and centre of mass velocity ratio at contact plot file
+			( plo < ${PL}/grc_el/prolate/grc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
+			echo d >> ${PL}/grc_el/prolate/grc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
+
+			# grc_phi_*_KD*_M*_GD*_oblate.plo
+
+			( cat <<EOF2
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
+
+cal xrho select(rho,alpha<1)
+cal ygrc select(grc,alpha<1)
+
+
+fig a
+
+gr 0,,el.n1-1 grc rho -err grc? -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+#*500 -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f}\$" N[0]
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle k_d=%g}\$" kd[0]
+gr el.n1+2 -mark 500 5500 -text "\${\scriptstyle m=%g}\$" m[0]
+gr el.n1+3 -mark 500 5000 -text "\${\scriptstyle \dot{\gamma}=%g}\$" gdot[0]
+
+xl (3*xrho.min-xrho.max)/2 (3*xrho.max-xrho.min)/2 lin
+yl (19*ygrc.min-ygrc.max)/18 (19*ygrc.max-ygrc.min)/18 lin
+
+xtext \$\phi\$
+ytext \$g^{RC}\$
+
+latexps ${TP}/${FI}/grc_phi_el/oblate/grc_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+EOF2
+			) > ${PL}/grc_el/oblate/grc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # rotational and centre of mass velocity ratio at contact plot file
+			( plo < ${PL}/grc_el/oblate/grc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
+			echo d >> ${PL}/grc_el/oblate/grc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
+
+			# vijrc_phi_*_KD*_M*_GD*_prolate.plo
+
+			( cat <<EOF2
 < "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
 
 icol el
@@ -1828,13 +2118,13 @@ ytext \$v^R_{ij}/v^C_{ij}\$
 
 latexps ${TP}/${FI}/vijrc_phi_el/prolate/vijrc_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
 EOF2
-				) > ${PL}/vijrc_el/prolate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # rotational and centre of mass velocity ratio at contact plot file
-				( plo < ${PL}/vijrc_el/prolate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
-				echo d >> ${PL}/vijrc_el/prolate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
+			) > ${PL}/vijrc_el/prolate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # rotational and centre of mass velocity ratio at contact plot file
+			( plo < ${PL}/vijrc_el/prolate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
+			echo d >> ${PL}/vijrc_el/prolate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
 
-				# vijrc_phi_*_KD*_M*_GD*_oblate.plo
+			# vijrc_phi_*_KD*_M*_GD*_oblate.plo
 
-				( cat <<EOF2
+			( cat <<EOF2
 < "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
 
 icol el
@@ -1862,13 +2152,13 @@ ytext \$v^R_{ij}/v^C_{ij}\$
 
 latexps ${TP}/${FI}/vijrc_phi_el/oblate/vijrc_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
 EOF2
-				) > ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # rotational and centre of mass velocity ratio at contact plot file
-				( plo < ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
-				echo d >> ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
+			) > ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # rotational and centre of mass velocity ratio at contact plot file
+			( plo < ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
+			echo d >> ${PL}/vijrc_el/oblate/vijrc_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
 
-				# S2_phi_*_KD*_M*_GD*_prolate.plo
+			# S2_phi_*_KD*_M*_GD*_prolate.plo
 
-				( cat <<EOF2
+			( cat <<EOF2
 < "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
 
 icol el
@@ -1901,13 +2191,13 @@ ytext \$S_2\$
 
 latexps ${TP}/${FI}/S2_phi_el/prolate/S2_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
 EOF2
-				) > ${PL}/S2_el/prolate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # biggest eigenvalue of the order tensor plot file
-				( plo < ${PL}/S2_el/prolate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
-				echo d >> ${PL}/S2_el/prolate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
+			) > ${PL}/S2_el/prolate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # biggest eigenvalue of the order tensor plot file
+			( plo < ${PL}/S2_el/prolate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
+			echo d >> ${PL}/S2_el/prolate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
 
-				# S2_phi_*_KD*_M*_GD*_oblate.plo
+			# S2_phi_*_KD*_M*_GD*_oblate.plo
 
-				( cat <<EOF2
+			( cat <<EOF2
 < "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
 
 icol el
@@ -1933,15 +2223,118 @@ ytext \$S_2\$
 
 latexps ${TP}/${FI}/S2_phi_el/oblate/S2_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
 EOF2
-				) > ${PL}/S2_el/oblate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # biggest eigenvalue of the order tensor plot file
-				( plo < ${PL}/S2_el/oblate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
-				echo d >> ${PL}/S2_el/oblate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
+			) > ${PL}/S2_el/oblate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # biggest eigenvalue of the order tensor plot file
+			( plo < ${PL}/S2_el/oblate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
+			echo d >> ${PL}/S2_el/oblate/S2_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
 
-			done
+			# omegav_phi_*_KD*_M*_GD*_prolate.plo
+
+			( cat <<EOF2
+< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
+
+cal xrho select(rho,alpha>1)
+cal yomegav select(omega/vr,alpha>1)
+
+
+fig a
+
+gr 0,,el.n1-1 omega/vr rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+500*# -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle \dot\gamma=%g}\$" gdot[0]
+
+xl (4*xrho.min-xrho.max)/3 (4*xrho.max-xrho.min)/3 lin
+yl (4*yomegav.min-yomegav.max)/3 (4*yomegav.max-yomegav.min)/3 lin
+
+xtext \$\phi\$
+ytext \$\omega/v\$
+
+latexps ${TP}/${FI}/omegav/omegav_phi_el/prolate/omegav_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate
+EOF2
+			) > ${PL}/omegav_el/prolate/omegav_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo # ratio of rotational and translational velocities plot file
+			( plo < ${PL}/omegav_el/prolate/omegav_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo ) &> /dev/null
+			echo d >> ${PL}/omegav_el/prolate/omegav_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_prolate.plo
+
+			# omegav_phi_*_KD*_M*_GD*_oblate.plo
+
+			( cat <<EOF2
+< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+
+icol el
+`for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
+
+cal xrho select(rho,alpha<1)
+cal yomegav select(omega/vr,alpha<1)
+
+
+fig a
+
+gr 0,,el.n1-1 omega/vr rho -line -sel alpha=el[#]
+gr 0,,el.n1-1 -mark 500 500+500*# -text "\${\scriptstyle \alpha=%1.2f}\$" el[#]
+
+gr el.n1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g}\$" N[0] kd[0] m[0]
+gr el.n1+1 -mark 500 6000 -text "\${\scriptstyle \dot\gamma=%g}\$" gdot[0]
+
+xl (4*xrho.min-xrho.max)/3 (4*xrho.max-xrho.min)/3 lin
+yl (4*yomegav.min-yomegav.max)/3 (4*yomegav.max-yomegav.min)/3 lin
+
+xtext \$\phi\$
+ytext \$\omega/v\$
+
+latexps ${TP}/${FI}/omegav/omegav_phi_el/oblate/omegav_phi_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate
+EOF2
+			) > ${PL}/omegav_el/oblate/omegav_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo # ratio of rotational and translational velocities plot file
+			( plo < ${PL}/omegav_el/oblate/omegav_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo ) &> /dev/null
+			echo d >> ${PL}/omegav_el/oblate/omegav_${NU}_KD${K}_M${MA}_GD${GD[$gd]}_oblate.plo
 
 		fi
 
 	done
+
+	# omegav_phiJ_*_KD*_M*.plo
+
+	GD_=( `plo <<EOF2
+< ${OV}/omegav_phiJ_${NU}_KD${K}_M${MA}.out
+list gdot
+EOF2
+	` | grep -v Plo ) # shear rates which have been analysed in the data file...
+	GD_=($(for gd in ${GD_[@]}; do echo $gd; done | sort)) # ...sorted
+	GD=() # shear rates which have been analysed in the data file without repetition
+	for gd in ${GD_[@]}; do
+		if [[ ! "${GD[#]}" =~ $gd ]]; then
+			GD+=($gd)
+		sfi
+	done
+	( cat <<EOF2
+< ${TP}/${OV}/omegav_phiJ_${NU}_KD${K}_M${MA}.out
+
+cal N $NU
+cal kd $K
+cal m $MA
+
+icol gd
+`for gd in ${GD[@]}; do echo $gd; done`
+
+
+fig a
+
+gr 0,,gd.n1-1 omegav_phiJ alpha -line -sel gdot=gd[#]
+gr 0,,gd.n1-1 -mark 500+500*#500 -text "\${\scriptstyle \dot\gamma=%g}\$" gd[#]
+
+gr gd.n1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g}\$" N kd m
+
+xtext \$\phi\$
+ytext \$<\omega/v>_{\phi>\phi_J(\alpha)}\$
+
+latexps ${TP}/${FI}/omegav_phiJ/omegav_phiJ_alpha_${NU}_KD${K}_M${MA}
+EOF2
+	) > ${PL}/omegav_phiJ/omegav_phiJ_${NU}_KD${K}_M${MA}.plo # mean of the ratio of rotational and translational velocities above the jamming packing fraction
+	( plo < ${PL}/omegav_phiJ/omegav_phiJ_${NU}_KD${K}_M${MA}.plo ) &> /dev/null
+	echo d >> ${PL}/omegav_phiJ/omegav_phiJ_${NU}_KD${K}_M${MA}.plo
 
 EOF
 
@@ -1956,6 +2349,10 @@ rsync --quiet --exclude '*~' -avzhe ssh ${LA}:${TP}/${CR}/ ${LP}/${CR} # copies 
 echo "Copying new contact numbers data files from tp.umu.se to local."
 mkdir -p ${LP}/${ZR}
 rsync --quiet --exclude '*~' -avzhe ssh ${LA}:${TP}/${ZR}/ ${LP}/${ZR} # copies new contact numbers data files to local
+
+echo "Copying new ratio of rotational and translational velocities data files from tp.umu.se to local."
+mkdir -p ${LP}/${OV}
+rsync --quiet --exclude '*~' -avzhe ssh ${LA}:${TP}/${OV}/ ${LP}/${OV} # copies new ratio of rotational and translational velocities data files to local
 
 echo "Copying new plo scripts from tp.umu.se to local."
 mkdir -p ${LP}/${PL}

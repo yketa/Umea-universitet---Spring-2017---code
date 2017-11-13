@@ -23,7 +23,7 @@ UD=${UPDATE-off} # updating the output files
 NU=${NUMBER-16384} # for simulations with N=NU particles
 
 GZ=${GUESSZC-"[090]=\'7.8 7.9 8 8.1 8.2\' [120]=\'9 9.1 9.2 9.3 9.4\'"} # hash table of guesses of the value of zc
-GP=${GUESSPJ-"[120]=\'0.695 0.7 0.705 0.71 0.715\' [090]=\'0.755 0.76 0.765 0.77 0.775\'"} # hash table of guesses of the value of phij
+GP=${GUESSPJ-"[120]=\'0.7016 0.7017 0.7018 0.7019 0.7020 0.7021 0.7022 0.7023 0.7024 0.7025 0.7026 0.7027 0.7028 0.7029 0.7030 0.7031 0.7032 0.7033 0.7034\' [090]=\'0.755 0.76 0.765 0.77 0.775\'"} # hash table of guesses of the value of phij
 
 US=${USER-yketa} # username(s) used for the /pfs user area at HPC2N
 HP=${HPC2N-hpc2n} # HPC2N host
@@ -129,6 +129,7 @@ ssh ${LA} "bash -s $NU $TP $GZ , $GP" << 'EOF' # executes on tp.umu.se
 	GU=$@
 	declare -A GZ="(${GU%%,*})" # hash table of guesses of the value of zc
 	declare -A GP="(${GU#*,})" # hash table of guesses of the value of phij
+	echo "(${GU#*,})"
 
 	while (( ${#NU} < 4 )); do
 		NU=0${NU} # number of particles with adequate number of zeros
@@ -151,6 +152,7 @@ ssh ${LA} "bash -s $NU $TP $GZ , $GP" << 'EOF' # executes on tp.umu.se
 	_EL=() # aspect ratios which have been already treated
 
 	mkdir -p ../tau_zr_outputs
+	mkdir -p ../tau_dphi_scale
 
 	mkdir -p ../relax_plots
 	mkdir -p ../relax_plots/tau_phi
@@ -159,6 +161,7 @@ ssh ${LA} "bash -s $NU $TP $GZ , $GP" << 'EOF' # executes on tp.umu.se
 	mkdir -p ../relax_plots/tau_dphi
 	mkdir -p ../relax_plots/pe_t
 	mkdir -p ../relax_plots/z_t
+	mkdir -p ../relax_plots/tau_dphi_scale
 
 	mkdir -p ../relax_figs
 	mkdir -p ../relax_figs/tau_phi
@@ -167,6 +170,7 @@ ssh ${LA} "bash -s $NU $TP $GZ , $GP" << 'EOF' # executes on tp.umu.se
 	mkdir -p ../relax_figs/tau_dphi
 	mkdir -p ../relax_figs/pe_t
 	mkdir -p ../relax_figs/z_t
+	mkdir -p ../relax_figs/tau_dphi_scale
 
 	for el in $(seq 0 $((${#EL[@]}-1))); do
 
@@ -178,6 +182,11 @@ ssh ${LA} "bash -s $NU $TP $GZ , $GP" << 'EOF' # executes on tp.umu.se
 			echo "icol N rho gdot kd m alpha suff tau zr" >> ../tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.out
 			> ../tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.csv # csv data
 			echo "N,rho,gdot,kd,m,alpha,suff,tau,zr," >> ../tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.csv
+
+			> ../tau_dphi_scale/tau_dphi_${NU}_EL${EL[$el]}.out # plo data
+			echo "icol N kd m alpha phij beta betasd chisq" >> ../tau_dphi_scale/tau_dphi_${NU}_EL${EL[$el]}.out
+			> ../tau_dphi_scale/tau_dphi_${NU}_EL${EL[$el]}.csv # csv data
+			echo "N,kd,m,alpha,phij,beta,betasd,chisq" >> ../tau_dphi_scale/tau_dphi_${NU}_EL${EL[$el]}.csv
 
 			Nfiles=`ls | grep .ttime | grep $NU | grep ${EL[$el]} | wc -l` # number of files to treat
 			echo "Reading from $Nfiles files with alpha=${EL[$el]:0:1}.${EL[$el]:1:2}."
@@ -396,6 +405,23 @@ EOF2
 					while (( ${#PJ} < 5 )); do
 						PJ=${PJ}0
 					done
+
+					values=( "`( plo <<EOF2
+< ${TP}/tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.out
+
+cal phij $pj
+
+icol a0 a1 chisq a0sd a1sd
+get linreg(ln(tau),ln(phij-rho),tau>1e3&zr>0)
+cal beta 0-a1[0]
+cal betasd a1sd[0]/(a1[0]^2)
+
+list N[0] kd[0] m[0] alpha[0] phij beta betasd chisq
+EOF2
+					) | grep -v Plo`" ) # relaxation time, inferred from a linear regression
+
+					echo ${values[@]} >> ../tau_dphi_scale/tau_dphi_${NU}_EL${EL[$el]}.out
+					echo ${values[@]} | sed s/' '/','/g >> ../tau_dphi_scale/tau_dphi_${NU}_EL${EL[$el]}.csv
 
 					( cat <<EOF2
 < ${TP}/tau_zr_outputs/tau_zr_${NU}_EL${EL[$el]}.out
