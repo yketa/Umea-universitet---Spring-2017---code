@@ -299,7 +299,7 @@ ssh $LA "bash -s $NU $K $MA $TP $CR $ZR $OV $PL $FI" << 'EOF' # executes on tp.u
 			p_crexp=() # critical expontents
 
 			p_crexp1=( `( plo <<EOF2
-< "cat tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.tot
 
 cal gdotmax $gdotmax
 cal gdotmin $gdotmin
@@ -351,7 +351,7 @@ EOF2
 			fi
 
 			p_crexp2=( `( plo <<EOF2
-< "cat tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.tot
 
 cal gdotmax $gdotmax
 cal gdotmin $gdotmin
@@ -360,13 +360,13 @@ cal xmax $xmax
 cal sdfact sqrt((engr-1)/(engr-3))
 cal phi rho
 
-cal phij ${p_crexp[0]}
+cal rhoc ${p_crexp[0]}
 cal beta ${p_crexp[2]}
 cal q ${p_crexp[4]}
 cal h ${p_crexp[6]}
 
-cal xminetap phij-0.05
-cal xmaxetap phij+0.02
+cal xminetap rhoc-0.05
+cal xmaxetap rhoc+0.02
 cal Selb rho>=xminetap&rho<=xmaxetap&pe>0
 
 cal w -0.5*h/q
@@ -374,13 +374,13 @@ cal w -0.5*h/q
 cal \\$A 0.0004
 cal \\$c 1.5
 
-# cal Xb (phi-phij)*gdot^h
+# cal Xb (phi-rhoc)*gdot^h
 # cal Selb abs(Xb)<xmax&engr>3&gdot<=gdotmax&gdot>=gdotmin
 
 for nn 1 10
 icol A c Asd csd chisqb
 get "lmarqsd(pe,pe?*sdfact,
-gdot*\\$A*(phij-phi+\\$c*energy^w):btot^(-beta),
+gdot*\\$A*(rhoc-phi+\\$c*energy^w):btot^(-beta),
 gdot*btot^(-beta),
 -gdot*\\$A*beta*energy^w*btot^(-beta-1),
 Selb)
@@ -397,7 +397,7 @@ EOF2
 			fi
 
 			p_crexp3=( `( plo <<EOF2
-< "cat tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.tot
 
 cal gdotmax $gdotmax
 cal gdotmin $gdotmin
@@ -406,13 +406,13 @@ cal xmax $xmax
 cal sdfact sqrt((engr-1)/(engr-3))
 cal phi rho
 
-cal phij ${p_crexp[0]}
+cal rhoc ${p_crexp[0]}
 cal beta ${p_crexp[2]}
 cal q ${p_crexp[4]}
 cal h ${p_crexp[6]}
 
-cal xminetap phij-0.05
-cal xmaxetap phij+0.02
+cal xminetap rhoc-0.05
+cal xmaxetap rhoc+0.02
 cal Selb rho>=xminetap&rho<=xmaxetap&pe>0
 
 cal w -0.5*h/q
@@ -431,8 +431,8 @@ cal phi1 phi1[0]
 cal phi2 select(rho,pe/gdot=etap2&Selb)
 cal phi2 phi2[0]
 
-cal C (((phij-phi1)/(E1^w)+(phi2-phij)/(E2^w))/((etap1^(-1/beta))/(E1^w)-(etap2^(-1/beta))/(E2^w)))^beta
-cal d ((etap2/C)^(-1/beta)+phi2-phij)/(E2^w)
+cal C (((rhoc-phi1)/(E1^w)+(phi2-rhoc)/(E2^w))/((etap1^(-1/beta))/(E1^w)-(etap2^(-1/beta))/(E2^w)))^beta
+cal d ((etap2/C)^(-1/beta)+phi2-rhoc)/(E2^w)
 
 list C d
 exit
@@ -459,7 +459,7 @@ EOF2
 				for gdmax in ${GD[@]:1}; do # we calculate critical exponents for every shear rate tested as the maximum
 
 					p_crexp=( `( plo <<EOF2
-< "cat tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.tot
 
 cal gdotmax $gdmax
 cal xmax $xmax
@@ -506,6 +506,7 @@ EOF2
 
 					values="${NU} ${K:1:1}.${K:2:2}${exponents[${K:0:1}]} ${MA:1:1}.${MA:2:2}${exponents[${MA:0:1}]} ${EL[$el]:0:1}.${EL[$el]:1:2} $gdmax ${p_crexp[@]} " # values
 					values=( $values )
+					echo ${values[@]}
 					if [[ "${#values[@]}" = "${#p_col_gdmax[@]}" ]]; then
 						echo ${values[@]} >> ${CR}/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.out # writes in plo parsed file
 						echo ${values[@]} | sed s/' '/','/g >> ${CR}/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.csv # writes in csv parsed data
@@ -517,7 +518,7 @@ EOF2
 			# p_scale_*_KD*_M*_EL*.plo
 
 			( cat <<EOF2
-< "cat ${TP}/tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat ${TP}/tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.tot
 getenv GDOTMAX $gdotmax
 getenv GDOTMIN $gdotmin
 getenv XMAX $xmax
@@ -565,7 +566,7 @@ cal xmaxetap \$rhoc+0.02
 cal Selb rho>=xminetap&rho<=xmaxetap&pe>0
 
 cal w -0.5*h[h.n1-1]/q[q.n1-1]
-cal phij rhoc[rhoc.n1-1]
+cal phi_j rhoc[rhoc.n1-1]
 
 
 fig a
@@ -663,12 +664,12 @@ cal phi1 phi1[0]
 cal phi2 select(rho,pe/gdot=etap2&Selb)
 cal phi2 phi2[0]
 
-cal C (((phij-phi1)/(E1^w)+(phi2-phij)/(E2^w))/((etap1^(-1/beta))/(E1^w)-(etap2^(-1/beta))/(E2^w)))^beta
-cal d ((etap2/C)^(-1/beta)+phi2-phij)/(E2^w)
+cal C (((phi_j-phi1)/(E1^w)+(phi2-phi_j)/(E2^w))/((etap1^(-1/beta))/(E1^w)-(etap2^(-1/beta))/(E2^w)))^beta
+cal d ((etap2/C)^(-1/beta)+phi2-phi_j)/(E2^w)
 
-cal xeb select(phij-rho+d*energy^w,Selb)
+cal xeb select(phi_j-rho+d*energy^w,Selb)
 
-gr 0,,gd.n1-1 pe/gdot phij-rho+d*energy^w -err pe?/gdot -sel gdot=gd[#]&Selb
+gr 0,,gd.n1-1 pe/gdot phi_j-rho+d*energy^w -err pe?/gdot -sel gdot=gd[#]&Selb
 
 icol rrr
 for i exp((19*ln(xeb.min)-ln(xeb.max))/18)*1000 exp((19*ln(xeb.max)-ln(xeb.min))/18)*1000 get i/1000
@@ -677,7 +678,7 @@ gr gd.n1 C*rrr^(-beta) rrr -Line
 gr gd.n1 -mark 800 1000 -text "\${\scriptstyle (\phi_J-\phi+ %6.3f E^{\scriptscriptstyle %6.3f})^{-\beta}}\$" d w
 # gr gd.n1+1 -mark 800 500 -text "\${\scriptstyle \chi^2/DOF=%g}\$" chisqb[chisqb.n1-1]
 gr gd.n1+2 -mark 800 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alpha=%6.2f}\$" N[0] kd[0] m[0] alpha[0]
-gr gd.n1+3 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f,~ \phi_J=%3.4f}\$" beta phij
+gr gd.n1+3 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f,~ \phi_J=%3.4f}\$" beta phi_j
 
 xl exp((9*ln(xeb.min)-ln(xeb.max))/8) exp((9*ln(xeb.max)-ln(xeb.min))/8) log
 yl yetapmin yetapmax log
@@ -698,15 +699,15 @@ cal \$c 1.5
 for nn 1 10
 icol A c Asd csd chisqb
 get "lmarqsd(pe,pe?*sdfact,
-gdot*\$A*(phij-phi+\$c*energy^w):btot^(-beta),
+gdot*\$A*(phi_j-phi+\$c*energy^w):btot^(-beta),
 gdot*btot^(-beta),
 -gdot*\$A*beta*energy^w*btot^(-beta-1),
 Selb)
 end
 
-cal xe select(phij-rho+c[c.n1-1]*energy^w,Selb)
+cal xe select(phi_j-rho+c[c.n1-1]*energy^w,Selb)
 
-gr 0,,gd.n1-1 pe/gdot phij-rho+c[c.n1-1]*energy^w -err pe?/gdot -sel gdot=gd[#]&Selb
+gr 0,,gd.n1-1 pe/gdot phi_j-rho+c[c.n1-1]*energy^w -err pe?/gdot -sel gdot=gd[#]&Selb
 
 icol rrr
 for i exp((19*ln(xe.min)-ln(xe.max))/18)*1000 exp((19*ln(xe.max)-ln(xe.min))/18)*1000 get i/1000
@@ -715,7 +716,7 @@ gr gd.n1 A[A.n1-1]*rrr^(-beta) rrr -Line
 gr gd.n1 -mark 800 1000 -text "\${\scriptstyle (\phi_J-\phi+ %6.3f E^{\scriptscriptstyle %6.3f})^{-\beta}}\$" c[c.n1-1] w
 gr gd.n1+1 -mark 800 500 -text "\${\scriptstyle \chi^2/DOF=%g}\$" chisqb[chisqb.n1-1]
 gr gd.n1+2 -mark 800 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g,~ \alpha=%6.2f}\$" N[0] kd[0] m[0] alpha[0]
-gr gd.n1+3 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f,~ \phi_J=%3.4f}\$" beta phij
+gr gd.n1+3 -mark 800 6000 -text "\${\scriptstyle \beta=%3.2f,~ \phi_J=%3.4f}\$" beta phi_j
 
 xl exp((9*ln(xe.min)-ln(xe.max))/8) exp((9*ln(xe.max)-ln(xe.min))/8) log
 yl yetapmin yetapmax log
@@ -747,7 +748,7 @@ EOF2
 				grc_crexp=() # critical expontents
 
 				grc_crexp1=( `( plo <<EOF2
-< "cat ltot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat ltot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.ltot
 
 cal gdotmax $gdotmax
 cal gdotmin $gdotmin
@@ -810,7 +811,7 @@ EOF2
 				# grc_scale_*_KD*_M*_EL*.plo
 
 				( cat <<EOF2
-< "cat ${TP}/ltot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat ${TP}/ltot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.ltot
 getenv GDOTMAX $gdotmax
 getenv GDOTMIN $gdotmin
 getenv XMAX 50*$xmax
@@ -918,7 +919,7 @@ EOF2
 			# rheo_*_KD*_M*_EL*.plo
 
 			( cat <<EOF2
-< "cat ${TP}/tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat ${TP}/tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.tot
 
 icol gd
 `for gd in ${GD[@]}; do echo $gd; done`
@@ -970,7 +971,7 @@ EOF2
 			for gd in $(seq 0 $((${#GD[@]}-1))); do # per shear rate
 
 				( cat <<EOF2
-< "cat ${TP}/tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat ${TP}/tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.tot
 
 cal gd ${GD[$gd]}
 
@@ -1018,7 +1019,7 @@ EOF2
 			# omegagd_*_KD*_M*_EL*.plo
 
 			( cat <<EOF2
-< "cat ${TP}/tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat ${TP}/tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.tot
 
 icol gd
 `for gd in ${GD[@]}; do echo $gd; done`
@@ -1071,7 +1072,7 @@ EOF2
 			# vijrc_*_KD*_M*_EL*.plo
 
 			( cat <<EOF2
-< "cat ${TP}/ltot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat ${TP}/ltot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.ltot
 
 icol gd
 `for gd in ${GD[@]}; do echo $gd; done`
@@ -1102,7 +1103,7 @@ EOF2
 			# S2_*_KD*_M*_EL*.plo
 
 			( cat <<EOF2
-< "cat ${TP}/ltot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat ${TP}/ltot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.ltot
 
 icol gd
 `for gd in ${GD[@]}; do echo $gd; done`
@@ -1131,7 +1132,7 @@ EOF2
 			# omegav_*_KD*_M*_EL*.plo
 
 			( cat <<EOF2
-< "cat ${TP}/tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*
+< "cat ${TP}/tot/${NU}_*_KD${K}_M${MA}_EL${EL[$el]}_*.tot
 
 icol gd
 `for gd in ${GD[@]}; do echo $gd; done`
@@ -1318,17 +1319,14 @@ EOF2
 					EL_+=(${file:${args[EL]}:3})
 				fi
 
-				# adding critical exponents data to the .tot files
-				foo="icol ${p_col[@]}" # item to look for in .tot files
-				if ! grep -Fq "$foo" tot/${file}.tot; then
-					echo $file
-					p_crexp=( ${p_cr_exp[${file:${args[EL]}:3}]} )
-					echo $foo >> tot/${file}.tot
-					if [[ "${#p_crexp[@]}" = "${#p_col[@]}" ]]; then # no errors in the critical exponents
-						echo "${p_crexp[@]}" >> tot/${file}.tot
-					else
-						echo $(for i in $(seq ${#p_col[@]}); do echo 0; done) >> tot/${file}.tot
-					fi
+				# creating .meas files with critical exponents in the .tot directory
+				foo="icol ${p_col[@]}" # item to add to .meas files
+				p_crexp=( ${p_cr_exp[${file:${args[EL]}:3}]} )
+				echo $foo > tot/${file}.meas
+				if [[ "${#p_crexp[@]}" = "${#p_col[@]}" ]]; then # no errors in the critical exponents
+					echo "${p_crexp[@]}" >> tot/${file}.meas
+				else
+					echo $(for i in $(seq ${#p_col[@]}); do echo 0; done) >> tot/${file}.meas
 				fi
 
 				# orientation related variables
@@ -1589,7 +1587,7 @@ EOF2
 			# omegagd_phi_*_KD*_M*_GD*.plo
 
 			( cat <<EOF2
-< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*.tot
 
 icol el
 `for el in ${EL[@]}; do echo $el; done`
@@ -1620,7 +1618,7 @@ EOF2
 			# omegagd_phi_*_KD*_M*_GD*_prolate.plo
 
 			( cat <<EOF2
-< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*.tot
 
 icol el
 `for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
@@ -1658,7 +1656,7 @@ EOF2
 			# omegagd_phi_*_KD*_M*_GD*_oblate.plo
 
 			( cat <<EOF2
-< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*.tot
 
 icol el
 `for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
@@ -2023,7 +2021,7 @@ EOF2
 			# grc_phi_*_KD*_M*_GD*_prolate.plo
 
 			( cat <<EOF2
-< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*.ltot
 
 icol el
 `for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
@@ -2057,7 +2055,7 @@ EOF2
 			# grc_phi_*_KD*_M*_GD*_oblate.plo
 
 			( cat <<EOF2
-< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*.ltot
 
 icol el
 `for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
@@ -2091,7 +2089,7 @@ EOF2
 			# vijrc_phi_*_KD*_M*_GD*_prolate.plo
 
 			( cat <<EOF2
-< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*.ltot
 
 icol el
 `for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
@@ -2125,7 +2123,7 @@ EOF2
 			# vijrc_phi_*_KD*_M*_GD*_oblate.plo
 
 			( cat <<EOF2
-< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*.ltot
 
 icol el
 `for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
@@ -2159,7 +2157,7 @@ EOF2
 			# S2_phi_*_KD*_M*_GD*_prolate.plo
 
 			( cat <<EOF2
-< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*.ltot
 
 icol el
 `for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
@@ -2198,7 +2196,7 @@ EOF2
 			# S2_phi_*_KD*_M*_GD*_oblate.plo
 
 			( cat <<EOF2
-< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+< "cat ${TP}/ltot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*.ltot
 
 icol el
 `for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
@@ -2230,7 +2228,7 @@ EOF2
 			# omegav_phi_*_KD*_M*_GD*_prolate.plo
 
 			( cat <<EOF2
-< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*.tot
 
 icol el
 `for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el > 1])"); then echo $el; fi; done`
@@ -2262,7 +2260,7 @@ EOF2
 			# omegav_phi_*_KD*_M*_GD*_oblate.plo
 
 			( cat <<EOF2
-< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*
+< "cat ${TP}/tot/${NU}_*_GD${GD[$gd]}_KD${K}_M${MA}_*.tot
 
 icol el
 `for el in ${EL[@]}; do if $(python -c "print(['false','true'][$el < 1])"); then echo $el; fi; done`
@@ -2305,9 +2303,9 @@ EOF2
 	GD_=($(for gd in ${GD_[@]}; do echo $gd; done | sort)) # ...sorted
 	GD=() # shear rates which have been analysed in the data file without repetition
 	for gd in ${GD_[@]}; do
-		if [[ ! "${GD[#]}" =~ $gd ]]; then
+		if [[ ! "${GD[@]}" =~ $gd ]]; then
 			GD+=($gd)
-		sfi
+		fi
 	done
 	( cat <<EOF2
 < ${TP}/${OV}/omegav_phiJ_${NU}_KD${K}_M${MA}.out
