@@ -2310,8 +2310,8 @@ EOF2
 < ${TP}/${OV}/omegav_phiJ_${NU}_KD${K}_M${MA}.out
 
 cal N $NU
-cal kd $K
-cal m $MA
+cal kd ${K:1:1}.${K:2:2}${exponents[${K:0:1}]}
+cal m ${MA:1:1}.${MA:2:2}${exponents[${MA:0:1}]}
 
 icol gd
 `for gd in ${GD[@]}; do echo $gd; done`
@@ -2320,9 +2320,12 @@ icol gd
 fig a
 
 gr 0,,gd.n1-1 omegav_phiJ alpha -line -sel gdot=gd[#]
-gr 0,,gd.n1-1 -mark 500+500*#500 -text "\${\scriptstyle \dot\gamma=%g}\$" gd[#]
+gr 0,,gd.n1-1 -mark 500 500+500*# -text "\${\scriptstyle \dot\gamma=%g}\$" gd[#]
 
 gr gd.n1 -mark 500 6500 -text "\${\scriptstyle N=%6.0f,~ k_d=%g,~ m=%g}\$" N kd m
+
+xl ((13/4)*alpha.min-alpha.max)*(4/9) ((11/2)*alpha.max-alpha.min)*(2/9) lin
+yl (4*omegav_phiJ.min-omegav_phiJ.max)/3 (4*omegav_phiJ.max-omegav_phiJ.min)/3 lin
 
 xtext \$\phi\$
 ytext \$<\omega/v>_{\phi>\phi_J(\alpha)}\$
