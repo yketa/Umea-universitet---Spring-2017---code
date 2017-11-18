@@ -506,7 +506,6 @@ EOF2
 
 					values="${NU} ${K:1:1}.${K:2:2}${exponents[${K:0:1}]} ${MA:1:1}.${MA:2:2}${exponents[${MA:0:1}]} ${EL[$el]:0:1}.${EL[$el]:1:2} $gdmax ${p_crexp[@]} " # values
 					values=( $values )
-					echo ${values[@]}
 					if [[ "${#values[@]}" = "${#p_col_gdmax[@]}" ]]; then
 						echo ${values[@]} >> ${CR}/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.out # writes in plo parsed file
 						echo ${values[@]} | sed s/' '/','/g >> ${CR}/p_cr_exp_gdmax_${NU}_KD${K}_M${MA}.csv # writes in csv parsed data
